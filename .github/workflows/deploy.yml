@@ -1,0 +1,80 @@
+name: Deploy to GitHub Pages and S3
+
+on:
+  push:
+    branches:
+      - staging
+      - prod
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, x64]
+    #runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22.15.0"
+          cache: "npm"
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      # Build project
+      - name: Build React app
+        run: npm run build
+
+      # Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.TOKEN }}
+          publish_dir: ./dist
+          publish_branch: ${{ github.ref == 'refs/heads/staging' && 'gh-pages-staging' || 'gh-pages' }}
+
+      # Upload to AWS S3
+      - name: Upload to S3
+        if: success()
+        uses: jakejarvis/s3-sync-action@v0.5.1
+        with:
+          args: --delete
+        env:
+          AWS_S3_BUCKET: ${{ github.ref == 'refs/heads/staging' && secrets.AWS_S3_BUCKET_STAGING || secrets.AWS_S3_BUCKET_PROD }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          SOURCE_DIR: "dist"
+
+      # Invalidate CloudFront cache
+#      - name: Invalidate CloudFront Cache
+#        if: success()
+#        uses: chetan/invalidate-cloudfront-action@v2
+#        with:
+#          DISTRIBUTION: ${{ github.ref == 'refs/heads/staging' && secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING || secrets.CLOUDFRONT_DISTRIBUTION_ID_PROD }}
+#          PATHS: "/*"
+#        env:
+#          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          AWS_REGION: ${{ secrets.AWS_REGION }}
+#          DISTRIBUTION: ${{ github.ref == 'refs/heads/staging' && secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING || secrets.CLOUDFRONT_DISTRIBUTION_ID_PROD }}
+#          PATHS: "/*"
+
+      # Invalidate CloudFront cache (fixed — AWS CLI)
+      - name: Invalidate CloudFront Cache
+        if: success()
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id $DISTRIBUTION \
+            --paths "/*"
+        env:
+          DISTRIBUTION: ${{ github.ref == 'refs/heads/staging' && secrets.CLOUDFRONT_DISTRIBUTION_ID_STAGING || secrets.CLOUDFRONT_DISTRIBUTION_ID_PROD }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}

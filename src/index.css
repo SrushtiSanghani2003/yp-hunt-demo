@@ -1,0 +1,501 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "InterVar";
+  src: url("/fonts/Inter-VariableFont_opsz-wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Italic Inter Variable font */
+@font-face {
+  font-family: "InterVar";
+  src: url("/fonts/Inter-Italic-VariableFont_opsz-wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Montserrat";
+  src: url("/fonts/Montserrat-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Italic Inter Variable font */
+@font-face {
+  font-family: "Montserrat";
+  src: url("/fonts/Montserrat-Italic-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto";
+  src: url("/fonts/Roboto-VariableFont.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Italic Inter Variable font */
+@font-face {
+  font-family: "Roboto";
+  src: url("/fonts/Roboto-Italic-VariableFont.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Designer";
+  src:
+    url("../public/fonts/DesignerRegular.woff2") format("woff2"),
+    url("../public/fonts/DesignerRegular.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Blender Pro Regular";
+  src:
+    url("../public/fonts/BlenderPro-Book.woff2") format("woff2"),
+    url("../public/fonts/BlenderPro-Book.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Blender Pro ExtraBold";
+  src:
+    url("/fonts/BlenderPro-Heavy.woff2") format("woff2"),
+    url("/fonts/BlenderPro-Heavy.woff") format("woff");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Blender Pro Italic";
+  src:
+    url("/fonts/BlenderPro-BookItalic.woff2") format("woff2"),
+    url("/fonts/BlenderPro-BookItalic.woff") format("woff");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Blender Pro BoldItalic";
+  src:
+    url("/fonts/BlenderPro-BoldItalic.woff2") format("woff2"),
+    url("/fonts/BlenderPro-BoldItalic.woff") format("woff");
+  font-weight: bold;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Blender Pro Bold";
+  src:
+    url("/fonts/BlenderPro-Bold.woff2") format("woff2"),
+    url("/fonts/BlenderPro-Bold.woff") format("woff");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Blender Pro Medium";
+  src:
+    url("/fonts/BlenderPro-Medium.woff2") format("woff2"),
+    url("/fonts/BlenderPro-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Blender Pro MediumItalic";
+  src:
+    url("/fonts/BlenderPro-MediumItalic.woff2") format("woff2"),
+    url("/fonts/BlenderPro-MediumItalic.woff") format("woff");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Blender Pro Thin";
+  src:
+    url("/fonts/BlenderPro-Thin.woff2") format("woff2"),
+    url("/fonts/BlenderPro-Thin.woff") format("woff");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  @apply font-inter;
+  background-color: #f6f6f6;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  cursor: pointer;
+  position: absolute;
+  right: 0;
+}
+
+input[type="date"]::-moz-focus-inner {
+  border: 0;
+} */
+
+input:focus-within,
+textarea:focus-within {
+  outline: none;
+}
+
+/* Sidebar Curvers CSS */
+.curves::after {
+  content: "";
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  right: 0;
+  bottom: -40px;
+  box-shadow: 20px -20px 0 #f6f6f6;
+  z-index: -1;
+}
+
+.curves::before {
+  content: "";
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  right: 0;
+  top: -40px;
+  box-shadow: 20px 20px 0 #f6f6f6;
+  z-index: -1;
+}
+
+.addBtn::before {
+  content: "";
+  width: 1px;
+  height: 12px;
+  background-color: black;
+  position: absolute;
+  left: 9px;
+  top: -10px;
+}
+.addBtn::after {
+  content: "";
+  width: 1px;
+  height: 12px;
+  background-color: black;
+  position: absolute;
+  left: 9px;
+  bottom: -10px;
+}
+
+.addSideBarBtn::before {
+  content: "";
+  width: 1px;
+  height: 12px;
+  background-color: black;
+  position: absolute;
+  left: 9px;
+  top: -10px;
+}
+
+/* Rich Text Editor CSS */
+.ql-editor {
+  min-height: 130px;
+}
+.ql-container {
+  font-size: 14px !important;
+  font-family: "InterVar", "sans-serif" !important;
+}
+.ql-toolbar.ql-snow {
+  border: none !important;
+}
+.ql-container.ql-snow {
+  border: 1px solid #acacac !important;
+  border-radius: 15px !important;
+}
+.css-3mnkve-control {
+  padding: 6px !important;
+}
+
+@media (max-width: 768px) {
+  .css-3mnkve-control {
+    padding: 0px !important;
+  }
+}
+
+/* INPUT PHONE NUMBER CSS */
+.react-tel-input .flag-dropdown.open .selected-flag,
+.react-tel-input .selected-flag:hover,
+.react-tel-input .selected-flag:focus {
+  background-color: transparent !important;
+}
+
+/* .goog-te-banner-frame.skiptranslate,
+.goog-te-gadget-icon {
+  display: none !important;
+}
+
+body > .goog-te-banner-frame {
+  display: none !important;
+}
+body {
+  top: 0px !important;
+} */
+
+.custom-range {
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  background-color: #d1d5db; /* Tailwind's gray-300 */
+  border-radius: 4px;
+  outline: none;
+}
+
+/* WebKit (Chrome, Safari) */
+.custom-range::-webkit-slider-thumb {
+  appearance: none;
+  height: 12px;
+  width: 12px;
+  background-color: #000;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* Firefox */
+.custom-range::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  background-color: #000;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* Edge/IE */
+.custom-range::-ms-thumb {
+  height: 12px;
+  width: 12px;
+  background-color: #000;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+
+/* Tree Select CSS */
+/* Apply style to the whole component */
+.custom-tree-select {
+  border: 1px solid #acacac;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+}
+
+/* Target the input field inside */
+.custom-tree-select .p-treeselect-label {
+  /* color: #1f2937; */
+  padding: 8px;
+}
+
+/* Style the dropdown panel */
+.custom-tree-select .p-treeselect-panel {
+  background-color: #f9fafb;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Hover and active states */
+.custom-tree-select.p-focus {
+  border-color: #acacac;
+  /* box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); */
+}
+
+.p-highlight {
+  background-color: #fcd20075 !important;
+  color: #1f2937 !important;
+}
+
+.p-treeselect-items-wrapper .p-tree {
+  padding: 10px;
+}
+
+.pageCreate .p-treeselect-header {
+  display: none !important;
+}
+
+/* .bentoBlock .p-treenode-content {
+  display: block !important;
+} */
+.p-treenode-content {
+  padding: 5px !important;
+  justify-content: space-between;
+  flex-direction: row-reverse;
+}
+.p-treenode {
+  padding: 0 0 0 10px;
+}
+.p-tree .p-tree-container .p-treenode .p-treenode-content.p-highlight {
+  background-color: #fcd20075;
+}
+.p-tree .p-tree-container .p-treenode .p-treenode-content {
+  transition: none;
+}
+::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 12px;
+  width: 12px;
+  background-color: transparent;
+  padding: 40px;
+  cursor: pointer;
+}
+.custom-tree-select.p-focus {
+  border-color: 1px solid #acacac;
+  box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2);
+}
+
+.swiper-button-prev-custom,
+.swiper-button-next-custom {
+  background-color: transparent;
+  border-radius: 50%;
+  padding: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.swiper-button-prev-custom:hover,
+.swiper-button-next-custom:hover {
+  background-color: white; /* Tailwind's yellow-50 */
+  border: 1px solid gray;
+}
+.swiper {
+  margin-left: 0 !important;
+}
+
+/* Rating star css */
+.clip-half {
+  clip-path: inset(0 50% 0 0);
+}
+
+/* Details page hero media */
+.heroMediaCurves::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  left: 0px;
+  height: 40px;
+  width: 40px;
+  background: transparent;
+
+  /* border-radius of pseudo element */
+  border-bottom-left-radius: 50%;
+  border-bottom: 2px solid black;
+  border-left: 2px solid black;
+  /* box shadow to give the shadow of the pseudo-element the same color as the background */
+  box-shadow: 0 20px 0 0 #f6f6f6;
+}
+.heroMediaCurves::after {
+  content: "";
+  position: absolute;
+  bottom: 0px;
+  right: -40px;
+  height: 40px;
+  width: 40px;
+  background: transparent;
+  border-bottom-left-radius: 50%;
+  box-shadow: 0 20px 0 0 #f6f6f6;
+  border-bottom: 2px solid black;
+  border-left: 2px solid black;
+}
+
+.fr-wrapper {
+  resize: vertical;
+  overflow: auto;
+}
+.custom-multi-selector .country-select__control {
+  border-radius: 12px !important;
+}
+
+.fr-theme-dark .fr-element {
+  background-color: black !important;
+  color: white !important;
+}
+.css-19bb58m {
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+}
+@layer utilities {
+  .scroll-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scroll-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+@layer utilities {
+  .scroll-minimal {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgba(0, 0, 0, 0.3) transparent; /* Firefox */
+  }
+
+  .scroll-minimal::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+
+  .scroll-minimal::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scroll-minimal::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 9999px;
+  }
+
+  .scroll-minimal::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+}
+.p-treeselect-header {
+  justify-content: end !important;
+}
+
+/* DatePicker: remove focus color and rings for a simpler look */
+.simple-date-picker .p-inputtext:enabled:focus {
+  box-shadow: none;
+  border-color: #acacac;
+}
+.simple-date-picker .p-inputtext:enabled:hover {
+  border-color: #acacac;
+}
+.simple-date-picker .p-datepicker table td > span:focus {
+  box-shadow: none;
+}
+/* .fr-view,
+.fr-element {
+  font-family: "Blender Pro Regular", sans-serif !important;
+} */
