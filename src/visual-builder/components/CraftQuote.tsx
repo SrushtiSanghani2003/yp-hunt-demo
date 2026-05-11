@@ -1,7 +1,15 @@
 import { useNode } from "@craftjs/core";
 import { useDeviceMode } from "../VisualBlockEditor";
 
+interface QuoteItem {
+  id?: string;
+  quote_text: string;
+  author: string;
+  order?: number;
+}
+
 export interface CraftQuoteProps {
+  quotes?: string | QuoteItem[];
   quote?: string;
   author?: string;
   source?: string;
@@ -30,7 +38,42 @@ export interface CraftQuoteProps {
   hideOnDesktop?: boolean;
 }
 
+const defaultQuotes: QuoteItem[] = [
+  {
+    quote_text: "The best way to predict the future is to create it.",
+    author: "Peter Drucker",
+    order: 1,
+  },
+];
+
+function normalizeQuotes(value: CraftQuoteProps["quotes"]): QuoteItem[] {
+  let rawItems: any[] = [];
+
+  if (Array.isArray(value)) {
+    rawItems = value;
+  } else if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      rawItems = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      rawItems = [];
+    }
+  }
+
+  return rawItems
+    .map((item, index) => ({
+      id: typeof item?.id === "string" ? item.id : undefined,
+      quote_text: typeof item?.quote_text === "string"
+        ? item.quote_text
+        : (typeof item?.quote === "string" ? item.quote : ""),
+      author: typeof item?.author === "string" ? item.author : "",
+      order: typeof item?.order === "number" ? item.order : index + 1,
+    }))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
 export const CraftQuote = ({
+  quotes,
   quote = "The best way to predict the future is to create it.",
   author = "Peter Drucker",
   source = "",
@@ -176,6 +219,43 @@ export const CraftQuote = ({
           : "0",
   };
 
+  const parsedQuotes = normalizeQuotes(quotes);
+  const displayQuotes = parsedQuotes.length > 0
+    ? parsedQuotes
+    : [{ quote_text: quote, author, order: 1 }];
+
+  const renderQuoteBody = (item: QuoteItem) => {
+    const quoteText = item.quote_text || quote;
+    return (
+      <>
+        {accentStyle === "quote-marks" && (
+          <div style={quoteMarkWrapperStyle}>
+            <span style={openQuoteMarkStyle}>"</span>
+            <p style={quoteTextStyle}>{quoteText}</p>
+            <span style={closeQuoteMarkStyle}>"</span>
+          </div>
+        )}
+
+        {accentStyle === "top-bottom-bar" && (
+          <>
+            <div style={topBottomBarStyle} />
+            <p style={{ ...quoteTextStyle, marginTop: "16px" }}>{quoteText}</p>
+            <div style={topBottomBarStyle} />
+          </>
+        )}
+
+        {accentStyle === "left-bar" && <p style={quoteTextStyle}>{quoteText}</p>}
+
+        {item.author && (
+          <p style={authorStyle}>
+            - {item.author}
+            {source && ` (${source})`}
+          </p>
+        )}
+      </>
+    );
+  };
+
   return (
     <div
       ref={(ref) => {
@@ -183,30 +263,13 @@ export const CraftQuote = ({
       }}
       style={containerStyle}
     >
-      {accentStyle === "quote-marks" && (
-        <div style={quoteMarkWrapperStyle}>
-          <span style={openQuoteMarkStyle}>"</span>
-          <p style={quoteTextStyle}>{quote}</p>
-          <span style={closeQuoteMarkStyle}>"</span>
-        </div>
-      )}
-
-      {accentStyle === "top-bottom-bar" && (
-        <>
-          <div style={topBottomBarStyle} />
-          <p style={{ ...quoteTextStyle, marginTop: "16px" }}>{quote}</p>
-          <div style={topBottomBarStyle} />
-        </>
-      )}
-
-      {accentStyle === "left-bar" && <p style={quoteTextStyle}>{quote}</p>}
-
-      {author && (
-        <p style={authorStyle}>
-          - {author}
-          {source && ` (${source})`}
-        </p>
-      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+        {displayQuotes.map((item, index) => (
+          <div key={item.id || index}>
+            {renderQuoteBody(item)}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -214,6 +277,7 @@ export const CraftQuote = ({
 CraftQuote.craft = {
   displayName: "Quote",
   props: {
+    quotes: JSON.stringify(defaultQuotes),
     quote: "The best way to predict the future is to create it.",
     author: "Peter Drucker",
     source: "",

@@ -1,12 +1,26 @@
 import { useNode } from "@craftjs/core";
 import { useDeviceMode } from "../VisualBlockEditor";
+import { concatImgURL } from "../../config/function";
+
+interface TestimonialQuote {
+  id?: string;
+  quote_img_url: string;
+  author: string;
+  job_title: string;
+  rating: number;
+  quote_text: string;
+  order?: number;
+}
 
 export interface CraftTestimonialProps {
+  quotes?: string | TestimonialQuote[];
   quote?: string;
   authorName?: string;
   authorTitle?: string;
   authorImage?: string;
   rating?: number;
+  limit?: number;
+  columns?: number;
   backgroundColor?: string;
   textColor?: string;
   accentColor?: string;
@@ -21,6 +35,8 @@ export interface CraftTestimonialProps {
   /** Responsive overrides */
   tabletFontSize?: number | "";
   mobileFontSize?: number | "";
+  tabletColumns?: number | "";
+  mobileColumns?: number | "";
   tabletPadding?: number | "";
   mobilePadding?: number | "";
   hideOnMobile?: boolean;
@@ -28,12 +44,65 @@ export interface CraftTestimonialProps {
   hideOnDesktop?: boolean;
 }
 
+const defaultQuotes: TestimonialQuote[] = [
+  {
+    quote_img_url: "",
+    author: "John Doe",
+    job_title: "CEO, Company",
+    rating: 5,
+    quote_text: "This is an amazing product that changed our workflow completely.",
+    order: 1,
+  },
+];
+
+function normalizeQuotes(value: CraftTestimonialProps["quotes"]): TestimonialQuote[] {
+  let rawItems: any[] = [];
+
+  if (Array.isArray(value)) {
+    rawItems = value;
+  } else if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      rawItems = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      rawItems = [];
+    }
+  }
+
+  return rawItems
+    .map((item, index) => ({
+      id: typeof item?.id === "string" ? item.id : undefined,
+      quote_img_url: typeof item?.quote_img_url === "string"
+        ? item.quote_img_url
+        : (typeof item?.authorImage === "string"
+          ? item.authorImage
+          : (typeof item?.avatarUrl === "string" ? item.avatarUrl : "")),
+      author: typeof item?.author === "string" && item.author.trim()
+        ? item.author
+        : (typeof item?.authorName === "string" && item.authorName.trim() ? item.authorName : `Author ${index + 1}`),
+      job_title: typeof item?.job_title === "string"
+        ? item.job_title
+        : (typeof item?.authorTitle === "string"
+          ? item.authorTitle
+          : (typeof item?.role === "string" ? item.role : "")),
+      rating: Number.isFinite(Number(item?.rating)) ? Number(item.rating) : 0,
+      quote_text: typeof item?.quote_text === "string"
+        ? item.quote_text
+        : (typeof item?.quote === "string" ? item.quote : ""),
+      order: typeof item?.order === "number" ? item.order : index + 1,
+    }))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
 export const CraftTestimonial = ({
+  quotes,
   quote = "This is an amazing product that changed our workflow completely.",
   authorName = "John Doe",
   authorTitle = "CEO, Company",
   authorImage = "",
   rating = 5,
+  limit = 0,
+  columns = 1,
   backgroundColor = "#ffffff",
   textColor = "#374151",
   accentColor = "#f59e0b",
@@ -47,6 +116,8 @@ export const CraftTestimonial = ({
   height = "",
   tabletFontSize = "",
   mobileFontSize = "",
+  tabletColumns = "",
+  mobileColumns = "",
   tabletPadding = "",
   mobilePadding = "",
   hideOnMobile = false,
@@ -75,10 +146,13 @@ export const CraftTestimonial = ({
 
   let activeFontSize = fontSize;
   let activePadding = padding;
+  let activeColumns = columns;
 
   if (device === "tablet") {
     if (tabletFontSize !== "" && tabletFontSize !== undefined)
       activeFontSize = Number(tabletFontSize);
+    if (tabletColumns !== "" && tabletColumns !== undefined)
+      activeColumns = Number(tabletColumns);
     if (tabletPadding !== "" && tabletPadding !== undefined)
       activePadding = Number(tabletPadding);
   } else if (device === "mobile") {
@@ -87,23 +161,50 @@ export const CraftTestimonial = ({
       activeFontSize = Number(tabletFontSize);
     if (mobileFontSize !== "" && mobileFontSize !== undefined)
       activeFontSize = Number(mobileFontSize);
+    if (tabletColumns !== "" && tabletColumns !== undefined)
+      activeColumns = Number(tabletColumns);
+    if (mobileColumns !== "" && mobileColumns !== undefined)
+      activeColumns = Number(mobileColumns);
+    else activeColumns = 1;
     if (tabletPadding !== "" && tabletPadding !== undefined)
       activePadding = Number(tabletPadding);
     if (mobilePadding !== "" && mobilePadding !== undefined)
       activePadding = Number(mobilePadding);
   }
 
+  const parsedQuotes = normalizeQuotes(quotes);
+  const allDisplayQuotes = parsedQuotes.length > 0
+    ? parsedQuotes
+    : [{
+      quote_img_url: authorImage,
+      author: authorName,
+      job_title: authorTitle,
+      rating,
+      quote_text: quote,
+      order: 1,
+    }];
+  const displayQuotes = limit > 0 ? allDisplayQuotes.slice(0, limit) : allDisplayQuotes;
+
   // Render stars
-  const renderStars = () => {
+  const renderStars = (quoteRating: number) => {
     const stars = [];
     for (let i = 0; i < 5; i++) {
       stars.push(
-        <span key={i} style={{ color: i < rating ? accentColor : "#e5e7eb" }}>
-          {i < rating ? String.fromCharCode(9733) : String.fromCharCode(9734)}
+        <span key={i} style={{ color: i < quoteRating ? accentColor : "#e5e7eb" }}>
+          {i < quoteRating ? String.fromCharCode(9733) : String.fromCharCode(9734)}
         </span>
       );
     }
     return stars;
+  };
+
+  const containerStyle: React.CSSProperties = {
+    width: width || "100%",
+    height: height || undefined,
+    boxSizing: "border-box",
+    cursor: "grab",
+    outline: isActive ? `2px solid #3b82f6` : "none",
+    transition: "all 0.15s ease",
   };
 
   const cardStyle: React.CSSProperties = {
@@ -113,13 +214,11 @@ export const CraftTestimonial = ({
     borderRadius: `${borderRadius}px`,
     border: borderWidth ? `${borderWidth}px solid ${borderColor}` : "none",
     boxShadow: layout === "minimal" ? "none" : "0 1px 3px rgba(0, 0, 0, 0.1)",
-    cursor: "grab",
     textAlign: layout === "centered" ? "center" : "left",
     fontSize: `${activeFontSize}px`,
     lineHeight: "1.6",
     boxSizing: "border-box",
-    transition: "all 0.15s ease",
-    outline: isActive ? `2px solid #3b82f6` : "none",
+    minWidth: 0,
   };
 
   return (
@@ -127,111 +226,126 @@ export const CraftTestimonial = ({
       ref={(ref) => {
         if (ref) connect(drag(ref));
       }}
-      style={{
-        ...cardStyle,
-        width: width || "100%",
-        height: height || undefined,
-        boxSizing: "border-box",
-      }}
+      style={containerStyle}
     >
-      {/* Quote mark */}
       <div
         style={{
-          fontSize: `${activeFontSize + 8}px`,
-          color: accentColor,
-          marginBottom: "12px",
-          fontWeight: "bold",
+          display: "grid",
+          gridTemplateColumns: `repeat(${Math.max(activeColumns, 1)}, minmax(0, 1fr))`,
+          gap: "16px",
         }}
       >
-        "
-      </div>
+        {displayQuotes.map((item, index) => (
+          <div
+            key={item.id || index}
+            style={cardStyle}
+          >
+            <div
+              style={{
+                fontSize: `${activeFontSize + 8}px`,
+                color: accentColor,
+                marginBottom: "12px",
+                fontWeight: "bold",
+              }}
+            >
+              "
+            </div>
 
-      {/* Quote text */}
-      <p
-        style={{
-          margin: "0 0 16px 0",
-          fontSize: `${activeFontSize}px`,
-          fontStyle: "italic",
-          color: textColor,
-        }}
-      >
-        {quote}
-      </p>
+            <p
+              style={{
+                margin: "0 0 16px 0",
+                fontSize: `${activeFontSize}px`,
+                fontStyle: "italic",
+                color: textColor,
+              }}
+            >
+              {item.quote_text}
+            </p>
 
-      {/* Rating */}
-      {rating > 0 && (
-        <div
-          style={{
-            marginBottom: "16px",
-            display: "flex",
-            gap: "4px",
-            justifyContent: layout === "centered" ? "center" : "flex-start",
-          }}
-        >
-          {renderStars()}
-        </div>
-      )}
+            {item.rating > 0 && (
+              <div
+                style={{
+                  marginBottom: "16px",
+                  display: "flex",
+                  gap: "4px",
+                  justifyContent: layout === "centered" ? "center" : "flex-start",
+                }}
+              >
+                {renderStars(item.rating)}
+              </div>
+            )}
 
-      {/* Author section */}
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          alignItems: layout === "centered" ? "center" : "flex-start",
-          flexDirection: layout === "centered" ? "column" : "row",
-        }}
-      >
-        {/* Author avatar */}
-        {authorImage ? (
-          <img
-            src={authorImage}
-            alt={authorName}
-            style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "50%",
-              objectFit: "cover",
-            }}
-          />
-        ) : (
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                alignItems: layout === "centered" ? "center" : "flex-start",
+                flexDirection: layout === "centered" ? "column" : "row",
+              }}
+            >
+              {item.quote_img_url ? (
+                <img
+                  src={concatImgURL(item.quote_img_url)}
+                  alt={item.author}
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "50%",
+                    backgroundColor: accentColor,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#ffffff",
+                    fontSize: "20px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {item.author.charAt(0).toUpperCase()}
+                </div>
+              )}
+
+              <div>
+                <div
+                  style={{
+                    fontWeight: "600",
+                    color: textColor,
+                    fontSize: `${activeFontSize}px`,
+                  }}
+                >
+                  {item.author}
+                </div>
+                <div
+                  style={{
+                    color: "#6b7280",
+                    fontSize: `${Math.max(activeFontSize - 2, 12)}px`,
+                  }}
+                >
+                  {item.job_title}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        {displayQuotes.length === 0 && (
           <div
             style={{
-              width: "48px",
-              height: "48px",
-              borderRadius: "50%",
-              backgroundColor: accentColor,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#ffffff",
-              fontSize: "20px",
-              fontWeight: "bold",
+              ...cardStyle,
+              color: "#9ca3af",
+              textAlign: "center",
             }}
           >
-            {authorName.charAt(0).toUpperCase()}
+            No testimonials added
           </div>
         )}
-
-        {/* Author info */}
-        <div>
-          <div
-            style={{
-              fontWeight: "600",
-              color: textColor,
-              fontSize: `${activeFontSize}px`,
-            }}
-          >
-            {authorName}
-          </div>
-          <div
-            style={{
-              color: "#6b7280",
-              fontSize: `${Math.max(activeFontSize - 2, 12)}px`,
-            }}
-          >
-            {authorTitle}
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -240,11 +354,14 @@ export const CraftTestimonial = ({
 CraftTestimonial.craft = {
   displayName: "Testimonial",
   props: {
+    quotes: JSON.stringify(defaultQuotes),
     quote: "This is an amazing product that changed our workflow completely.",
     authorName: "John Doe",
     authorTitle: "CEO, Company",
     authorImage: "",
     rating: 5,
+    limit: 0,
+    columns: 1,
     backgroundColor: "#ffffff",
     textColor: "#374151",
     accentColor: "#f59e0b",
@@ -258,6 +375,8 @@ CraftTestimonial.craft = {
     height: "",
     tabletFontSize: "",
     mobileFontSize: "",
+    tabletColumns: "",
+    mobileColumns: "",
     tabletPadding: "",
     mobilePadding: "",
     hideOnMobile: false,

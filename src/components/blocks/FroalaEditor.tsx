@@ -26,6 +26,7 @@ interface FroalaEditorProps {
   onThemeChange?: (isDark: boolean) => void;
   tag?: string;
   config?: any;
+  showThemeToggle?: boolean;
 }
 
 const FroalaEditor: React.FC<FroalaEditorProps> = ({
@@ -36,6 +37,7 @@ const FroalaEditor: React.FC<FroalaEditorProps> = ({
   onThemeChange,
   tag = "textarea",
   config = froalaConfig,
+  showThemeToggle = true,
 }) => {
   const [isClient, setIsClient] = useState(false);
   const editorRef = useRef<any>(null);
@@ -204,17 +206,21 @@ const FroalaEditor: React.FC<FroalaEditorProps> = ({
 
   return (
     <>
-      <div className="flex justify-between items-center">
-        <h1 className="block text-base mb-2 font-medium text-black">{label}</h1>
-        <button
-          onClick={() => handleBtnClick()}
-          className={`mb-2 px-3 py-1 border rounded-xl text-md transition-all duration-150 ${
-            isDark ? "bg-white text-black" : "bg-black text-white"
-          }`}
-        >
-          {isDark ? "Light Mode" : "Dark Mode"}
-        </button>
-      </div>
+      {(label || showThemeToggle) && (
+        <div className="flex justify-between items-center">
+          {label && <h1 className="block text-base mb-2 font-medium text-black">{label}</h1>}
+          {showThemeToggle && (
+            <button
+              onClick={() => handleBtnClick()}
+              className={`mb-2 px-3 py-1 border rounded-xl text-md transition-all duration-150 ${
+                isDark ? "bg-white text-black" : "bg-black text-white"
+              }`}
+            >
+              {isDark ? "Light Mode" : "Dark Mode"}
+            </button>
+          )}
+        </div>
+      )}
       <FroalaEditorComponent
         tag={tag}
         model={model}

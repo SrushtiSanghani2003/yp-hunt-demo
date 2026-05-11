@@ -56,6 +56,11 @@ function buildStyleString(styles: Record<string, any>): string {
     .join("; ");
 }
 
+function extractYouTubeId(url: string): string {
+  const match = String(url || "").match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+  return match && match[2]?.length === 11 ? match[2] : "";
+}
+
 function sanitizeCustomHtml(html: string): string {
   if (!html) return "";
 
@@ -319,24 +324,31 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
     case "CraftVideo": {
       const rClass = collectResponsive(props);
       const classAttr = rClass ? ` class="${rClass}"` : "";
-      if (props.videoType === "youtube" && props.videoId) {
-        const style: Record<string, any> = {
-          width: props.width || "100%",
-          height: props.height || "315px",
-          borderRadius: props.borderRadius ? `${props.borderRadius}px` : undefined,
-          maxWidth: "100%",
-        };
-        const styleStr = buildStyleString(style);
-        return `<iframe src="https://www.youtube.com/embed/${props.videoId}" frameborder="0" allowfullscreen${styleStr ? ` style="${styleStr}"` : ""}${classAttr}></iframe>`;
-      }
+      const videoType = props.video_type || props.videoType || "youtube";
+      const src = props.video_url || props.src || "";
+      const videoId = props.video_id || props.videoId || (src ? extractYouTubeId(src) : "");
+      const thumbnail = props.thumbnail_url || props.thumbnail || (videoId ? `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg` : "");
       const style: Record<string, any> = {
         width: props.width || "100%",
-        height: props.height || "auto",
+        height: props.height || "315px",
         borderRadius: props.borderRadius ? `${props.borderRadius}px` : undefined,
         maxWidth: "100%",
+        objectFit: props.objectFit || "cover",
+        opacity: props.opacity ?? undefined,
       };
       const styleStr = buildStyleString(style);
-      return `<video src="${props.src || ""}" controls${props.autoplay ? " autoplay" : ""}${props.muted ? " muted" : ""}${props.loop ? " loop" : ""}${styleStr ? ` style="${styleStr}"` : ""}${classAttr}></video>`;
+      if (videoType === "youtube" && videoId) {
+        const params = new URLSearchParams();
+        if (props.autoplay) params.set("autoplay", "1");
+        if (props.muted) params.set("mute", "1");
+        if (props.loop) {
+          params.set("loop", "1");
+          params.set("playlist", videoId);
+        }
+        const query = params.toString();
+        return `<iframe src="https://www.youtube.com/embed/${videoId}${query ? `?${query}` : ""}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen${styleStr ? ` style="${styleStr}"` : ""}${classAttr}></iframe>`;
+      }
+      return `<video src="${src}"${props.controls !== false ? " controls" : ""}${props.autoplay ? " autoplay" : ""}${props.muted ? " muted" : ""}${props.loop ? " loop" : ""}${props.playsInline !== false ? " playsinline" : ""}${props.preload ? ` preload="${props.preload}"` : ""}${thumbnail && props.showThumbnail !== false ? ` poster="${thumbnail}"` : ""}${styleStr ? ` style="${styleStr}"` : ""}${classAttr}></video>`;
     }
 
     case "CraftHtml": {
@@ -428,31 +440,64 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
       const classAttr = rClass ? ` class="${rClass}"` : "";
       const bgColor = props.backgroundColor || "#ffffff";
       const textColor = props.textColor || "#333333";
-      const stars = props.rating || 5;
-      const starHtml = "&#9733;".repeat(stars) + "&#9734;".repeat(5 - stars);
-      const avatarHtml = props.avatarUrl
-        ? `<img src="${props.avatarUrl}" alt="${props.author || ""}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;" />`
-        : `<div style="width:48px;height:48px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:600;color:#6b7280;">${(props.author || "A").charAt(0).toUpperCase()}</div>`;
+      let quotes: Array<any> = [];
+      try { quotes = typeof props.quotes === "string" ? JSON.parse(props.quotes) : (props.quotes || []); } catch { quotes = []; }
+      quotes = Array.isArray(quotes) ? quotes : [];
+      if (quotes.length === 0) {
+        quotes = [{
+          quote_img_url: props.authorImage || props.avatarUrl || "",
+          author: props.authorName || props.author || "Author Name",
+          job_title: props.authorTitle || props.role || "",
+          rating: props.rating || 5,
+          quote_text: props.quote || "",
+          order: 1,
+        }];
+      }
+      quotes = quotes
+        .map((quote, index) => ({ ...quote, order: quote?.order || index + 1 }))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+      const testimonialLimit = Number(props.limit) || 0;
+      if (testimonialLimit > 0) {
+        quotes = quotes.slice(0, testimonialLimit);
+      }
+      const testimonialColumns = Math.max(Number(props.columns) || 1, 1);
       const style = buildStyleString({
+        display: "grid",
+        gridTemplateColumns: `repeat(${testimonialColumns}, minmax(0, 1fr))`,
+        gap: "16px",
+        maxWidth: "100%",
+        boxSizing: "border-box",
+      });
+      const cardStyle = buildStyleString({
         backgroundColor: bgColor,
         color: textColor,
         padding: `${props.padding || 24}px`,
         borderRadius: `${props.borderRadius || 12}px`,
         border: props.borderWidth ? `${props.borderWidth}px solid ${props.borderColor || "#e5e7eb"}` : undefined,
-        maxWidth: "100%",
         boxSizing: "border-box",
       });
-      return `<div style="${style}"${classAttr}>
-        ${props.showRating !== false ? `<div style="color:#f59e0b;font-size:16px;margin-bottom:8px;">${starHtml}</div>` : ""}
-        <blockquote style="font-style:italic;margin:0 0 16px 0;font-size:${props.fontSize || 16}px;line-height:1.6;">"${props.quote || ""}"</blockquote>
-        <div style="display:flex;align-items:center;gap:12px;">
-          ${avatarHtml}
-          <div>
-            <div style="font-weight:600;">${props.author || "Author Name"}</div>
-            ${props.role ? `<div style="font-size:13px;opacity:0.7;">${props.role}</div>` : ""}
+      const cardsHtml = quotes.map((item) => {
+        const rating = Math.max(0, Math.min(5, Number(item.rating) || 0));
+        const fullStars = Math.floor(rating);
+        const starHtml = "&#9733;".repeat(fullStars) + (rating % 1 ? "&#189;" : "") + "&#9734;".repeat(5 - Math.ceil(rating));
+        const author = item.author || "Author Name";
+        const imageUrl = item.quote_img_url || item.authorImage || item.avatarUrl || "";
+        const avatarHtml = imageUrl
+          ? `<img src="${imageUrl}" alt="${author}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;" />`
+          : `<div style="width:48px;height:48px;border-radius:50%;background:${props.accentColor || "#f59e0b"};display:flex;align-items:center;justify-content:center;font-weight:600;color:#ffffff;">${author.charAt(0).toUpperCase()}</div>`;
+        return `<div style="${cardStyle}">
+          ${props.showRating !== false && rating > 0 ? `<div style="color:${props.accentColor || "#f59e0b"};font-size:16px;margin-bottom:8px;">${starHtml}</div>` : ""}
+          <blockquote style="font-style:italic;margin:0 0 16px 0;font-size:${props.fontSize || 16}px;line-height:1.6;">"${item.quote_text || item.quote || ""}"</blockquote>
+          <div style="display:flex;align-items:center;gap:12px;">
+            ${avatarHtml}
+            <div>
+              <div style="font-weight:600;">${author}</div>
+              ${item.job_title ? `<div style="font-size:13px;opacity:0.7;">${item.job_title}</div>` : ""}
+            </div>
           </div>
-        </div>
-      </div>`;
+        </div>`;
+      }).join("");
+      return `<div style="${style}"${classAttr}>${cardsHtml}</div>`;
     }
 
     case "CraftFAQ": {
@@ -503,8 +548,21 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
     case "CraftTeam": {
       const rClass = collectResponsive(props);
       const classAttr = rClass ? ` class="${rClass}"` : "";
-      let members: Array<{ name: string; role?: string; avatar?: string; bio?: string }> = [];
+      let members: Array<{
+        name: string;
+        designation?: string;
+        role?: string;
+        image_url?: string;
+        image?: string;
+        avatar?: string;
+        short_bio?: string;
+        bio?: string;
+        order?: number;
+      }> = [];
       try { members = typeof props.members === "string" ? JSON.parse(props.members) : (props.members || []); } catch { members = []; }
+      members = members
+        .map((member, index) => ({ ...member, order: member.order || index + 1 }))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
       const columns = props.columns || 3;
       const gap = props.gap || 16;
       const style = buildStyleString({
@@ -516,14 +574,18 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
         boxSizing: "border-box",
       });
       const membersHtml = members.map((m) => {
-        const avatarHtml = m.avatar
-          ? `<img src="${m.avatar}" alt="${m.name}" style="width:${props.avatarSize || 80}px;height:${props.avatarSize || 80}px;border-radius:50%;object-fit:cover;" />`
-          : `<div style="width:${props.avatarSize || 80}px;height:${props.avatarSize || 80}px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600;color:#6b7280;">${(m.name || "?").charAt(0).toUpperCase()}</div>`;
+        const imageUrl = m.image_url || m.image || m.avatar || "";
+        const designation = m.designation || m.role || "";
+        const bio = m.short_bio || m.bio || "";
+        const imageSize = props.imageSize || props.avatarSize || 80;
+        const avatarHtml = imageUrl
+          ? `<img src="${imageUrl}" alt="${m.name}" style="width:${imageSize}px;height:${imageSize}px;border-radius:50%;object-fit:cover;" />`
+          : `<div style="width:${imageSize}px;height:${imageSize}px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600;color:#6b7280;">${(m.name || "?").charAt(0).toUpperCase()}</div>`;
         return `<div style="text-align:center;">
-          ${avatarHtml}
+          ${props.showImage === false ? "" : avatarHtml}
           <div style="font-weight:600;margin-top:8px;font-size:${props.nameFontSize || 15}px;">${m.name}</div>
-          ${m.role ? `<div style="font-size:13px;color:#6b7280;">${m.role}</div>` : ""}
-          ${props.showBio !== false && m.bio ? `<p style="font-size:13px;color:#4b5563;margin-top:4px;">${m.bio}</p>` : ""}
+          ${designation ? `<div style="font-size:${props.roleFontSize || 13}px;color:${props.roleColor || "#6b7280"};">${designation}</div>` : ""}
+          ${props.showBio !== false && bio ? `<p style="font-size:${props.bioFontSize || 13}px;color:${props.bioColor || "#4b5563"};margin-top:4px;">${bio}</p>` : ""}
         </div>`;
       }).join("");
       return `<div style="${style}"${classAttr}>${membersHtml}</div>`;
@@ -532,6 +594,17 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
     case "CraftContact": {
       const rClass = collectResponsive(props);
       const classAttr = rClass ? ` class="${rClass}"` : "";
+      let contacts: Array<{
+        title?: string;
+        description?: string;
+        phone?: Array<{ value?: string }> | string[];
+        email?: Array<{ value?: string }> | string[];
+        order?: number;
+      }> = [];
+      try { contacts = typeof props.contacts === "string" ? JSON.parse(props.contacts) : (props.contacts || []); } catch { contacts = []; }
+      contacts = contacts
+        .map((contact, index) => ({ ...contact, order: contact.order || index + 1 }))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
       const style = buildStyleString({
         padding: `${props.padding || 24}px`,
         backgroundColor: props.backgroundColor || "#ffffff",
@@ -542,8 +615,32 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
       });
       const lines: string[] = [];
       if (props.title) lines.push(`<h3 style="font-size:${props.titleFontSize || 20}px;font-weight:700;margin:0 0 16px 0;">${props.title}</h3>`);
-      if (props.phone) lines.push(`<p style="margin:4px 0;">Phone: ${props.phone}</p>`);
-      if (props.email) lines.push(`<p style="margin:4px 0;">Email: <a href="mailto:${props.email}">${props.email}</a></p>`);
+      if (props.showDescription !== false && props.description) lines.push(`<p style="margin:0 0 16px 0;color:${props.textColor || "#4b5563"};">${props.description}</p>`);
+      if (contacts.length > 0) {
+        contacts.forEach((contact, index) => {
+          const phones = Array.isArray(contact.phone) ? contact.phone : [];
+          const emails = Array.isArray(contact.email) ? contact.email : [];
+          const phoneLines = phones
+            .map((item: any) => typeof item === "string" ? item : item?.value)
+            .filter(Boolean)
+            .map((value) => `<a href="tel:${value}" style="display:block;color:inherit;text-decoration:none;margin:2px 0;">${value}</a>`)
+            .join("");
+          const emailLines = emails
+            .map((item: any) => typeof item === "string" ? item : item?.value)
+            .filter(Boolean)
+            .map((value) => `<a href="mailto:${value}" style="display:block;color:inherit;text-decoration:none;margin:2px 0;">${value}</a>`)
+            .join("");
+          lines.push(`<div style="margin:0 0 14px 0;">
+            <strong style="display:block;margin-bottom:4px;">${contact.title || `Contact ${index + 1}`}</strong>
+            ${contact.description ? `<p style="margin:0 0 4px 0;">${contact.description}</p>` : ""}
+            ${phoneLines}
+            ${emailLines}
+          </div>`);
+        });
+      } else {
+        if (props.phone) lines.push(`<p style="margin:4px 0;">Phone: ${props.phone}</p>`);
+        if (props.email) lines.push(`<p style="margin:4px 0;">Email: <a href="mailto:${props.email}">${props.email}</a></p>`);
+      }
       if (props.address) lines.push(`<p style="margin:4px 0;">Address: ${props.address}</p>`);
       if (props.showMap && props.mapEmbedUrl) lines.push(`<iframe src="${props.mapEmbedUrl}" style="width:100%;height:${props.mapHeight || 200}px;border:0;border-radius:8px;margin-top:12px;" allowfullscreen loading="lazy"></iframe>`);
       return `<div style="${style}"${classAttr}>${lines.join("")}</div>`;
@@ -552,6 +649,19 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
     case "CraftQuote": {
       const rClass = collectResponsive(props);
       const classAttr = rClass ? ` class="${rClass}"` : "";
+      let quotes: Array<any> = [];
+      try { quotes = typeof props.quotes === "string" ? JSON.parse(props.quotes) : (props.quotes || []); } catch { quotes = []; }
+      quotes = Array.isArray(quotes) ? quotes : [];
+      if (quotes.length === 0) {
+        quotes = [{
+          quote_text: props.quote || props.text || "",
+          author: props.author || "",
+          order: 1,
+        }];
+      }
+      quotes = quotes
+        .map((quote, index) => ({ ...quote, order: quote?.order || index + 1 }))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
       const accentColor = props.accentColor || "#f59e0b";
       const accentStyle = props.accentStyle || "left-bar";
       let borderStyle = "";
@@ -564,6 +674,14 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
         maxWidth: "100%",
         boxSizing: "border-box",
       });
+      const quoteItemsHtml = quotes.map((item, index) => `
+        <div style="margin-bottom:${index === quotes.length - 1 ? 0 : 18}px;">
+          ${accentStyle === "quote-marks" ? `<span style="font-size:48px;line-height:1;color:${accentColor};font-family:Georgia,serif;">&ldquo;</span>` : ""}
+          <p style="font-size:${props.fontSize || 18}px;font-style:italic;color:${props.textColor || "#92400e"};margin:0 0 8px 0;line-height:1.6;">${item.quote_text || item.quote || ""}</p>
+          ${item.author ? `<footer style="font-size:14px;font-weight:600;color:${props.authorColor || "#b45309"};">— ${item.author}</footer>` : ""}
+        </div>
+      `).join("");
+      return `<blockquote style="${style};${borderStyle}"${classAttr}>${quoteItemsHtml}</blockquote>`;
       return `<blockquote style="${style};${borderStyle}"${classAttr}>
         ${accentStyle === "quote-marks" ? `<span style="font-size:48px;line-height:1;color:${accentColor};font-family:Georgia,serif;">&ldquo;</span>` : ""}
         <p style="font-size:${props.fontSize || 18}px;font-style:italic;color:${props.textColor || "#92400e"};margin:0 0 8px 0;line-height:1.6;">${props.text || ""}</p>
@@ -574,8 +692,11 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
     case "CraftTimeline": {
       const rClass = collectResponsive(props);
       const classAttr = rClass ? ` class="${rClass}"` : "";
-      let items: Array<{ title: string; description?: string; date?: string }> = [];
+      let items: Array<any> = [];
       try { items = typeof props.items === "string" ? JSON.parse(props.items) : (props.items || []); } catch { items = []; }
+      items = items
+        .map((item, index) => ({ ...item, order: item?.order || index + 1 }))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
       const lineColor = props.lineColor || "#e5e7eb";
       const dotColor = props.dotColor || "#f59e0b";
       const dotSize = props.dotSize || 12;
@@ -584,19 +705,39 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
         maxWidth: "100%",
         boxSizing: "border-box",
       });
-      const itemsHtml = items.map((item, i) => `
+      const itemsHtml = items.map((item, i) => {
+        const title = item?.more?.title || item.title || `Milestone ${i + 1}`;
+        const description = item?.more?.description || item.description || "";
+        const date = item.tagline_title || item.date || "";
+        const mediaHtml = !item.is_form && item.mediaType
+          ? `<div style="width:180px;max-width:100%;flex-shrink:0;">${
+            item.mediaType === "image" && item.imageUrl
+              ? `<img src="${item.imageUrl}" alt="${title}" style="width:100%;height:110px;object-fit:cover;border-radius:8px;display:block;" />`
+              : item.mediaType === "video"
+                ? (item.videoThumbnail
+                  ? `<img src="${item.videoThumbnail}" alt="${title}" style="width:100%;height:110px;object-fit:cover;border-radius:8px;display:block;" />`
+                  : `<div style="height:110px;border-radius:8px;background:#111827;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;">Video</div>`)
+                : ""
+          }</div>`
+          : "";
+        return `
         <div style="display:flex;gap:16px;position:relative;padding-bottom:${i < items.length - 1 ? 24 : 0}px;">
           <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
             <div style="width:${dotSize}px;height:${dotSize}px;border-radius:50%;background:${dotColor};flex-shrink:0;"></div>
             ${i < items.length - 1 ? `<div style="width:2px;flex:1;background:${lineColor};"></div>` : ""}
           </div>
-          <div style="padding-bottom:8px;">
-            ${item.date ? `<div style="font-size:12px;color:#9ca3af;margin-bottom:2px;">${item.date}</div>` : ""}
-            <div style="font-weight:600;font-size:${props.titleFontSize || 15}px;">${item.title}</div>
-            ${item.description ? `<p style="font-size:${props.descriptionFontSize || 13}px;color:#6b7280;margin:4px 0 0 0;">${item.description}</p>` : ""}
+          <div style="display:flex;gap:16px;flex:1;flex-direction:${item.mediaAlignment === "right" ? "row" : "row-reverse"};">
+            <div style="padding-bottom:8px;flex:1;min-width:0;">
+              ${date ? `<div style="font-size:12px;color:#9ca3af;margin-bottom:2px;">${date}</div>` : ""}
+              <div style="font-weight:600;font-size:${props.titleFontSize || 15}px;">${title}</div>
+              ${description ? `<p style="font-size:${props.descriptionFontSize || 13}px;color:#6b7280;margin:4px 0 0 0;">${description}</p>` : ""}
+              ${item.more?.link ? `<a href="${item.more.link}" style="display:inline-block;margin-top:8px;color:${props.accentColor || "#f59e0b"};font-size:13px;font-weight:600;">View More</a>` : ""}
+            </div>
+            ${mediaHtml}
           </div>
         </div>
-      `).join("");
+      `;
+      }).join("");
       return `<div style="${style}"${classAttr}>${itemsHtml}</div>`;
     }
 
@@ -707,8 +848,28 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
       } catch {
         parsedDocuments = [];
       }
-      const documents = Array.isArray(parsedDocuments)
-        ? parsedDocuments.map((doc, index) => ({
+      const rawDocuments = Array.isArray(parsedDocuments)
+        ? parsedDocuments.flatMap((doc: any, groupIndex: number) => {
+          if (Array.isArray(doc?.subDocs)) {
+            return doc.subDocs.map((subDoc: any, subIndex: number) => ({
+              groupTitle: doc?.title || "Documents",
+              description: doc?.description || "",
+              sortOrder: doc?.sortOrder || groupIndex + 1,
+              title: subDoc?.doc_name || `Document ${subIndex + 1}`,
+              url: subDoc?.document_url || "",
+              fileType: subDoc?.type || "pdf",
+              fileSize: subDoc?.size || "",
+              order: subDoc?.order || subIndex + 1,
+            }));
+          }
+          return [doc];
+        })
+        : [];
+      const documents = rawDocuments
+        .map((doc, index) => ({
+          groupTitle: typeof doc?.groupTitle === "string" ? doc.groupTitle : "Documents",
+          description: typeof doc?.description === "string" ? doc.description : "",
+          sortOrder: typeof doc?.sortOrder === "number" ? doc.sortOrder : 1,
           title: typeof doc?.title === "string" && doc.title.trim() ? doc.title : `Document ${index + 1}`,
           url: typeof doc?.url === "string"
             ? doc.url
@@ -719,8 +880,9 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
           fileSize: typeof doc?.size === "string"
             ? doc.size
             : (typeof doc?.fileSize === "string" ? doc.fileSize : ""),
+          order: typeof doc?.order === "number" ? doc.order : index + 1,
         }))
-        : [];
+        .sort((a, b) => (a.sortOrder - b.sortOrder) || (a.order - b.order));
 
       const showFileSize = props.showFileSize !== false;
       const showDownloadButton = props.showDownloadButton !== false;
@@ -736,6 +898,7 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
       const docsHtml = documents.map((doc, index) => {
         const safeType = (doc.fileType || "FILE").toUpperCase().slice(0, 4);
         const hasUrl = typeof doc.url === "string" && doc.url.trim().length > 0;
+        const showGroupHeader = index === 0 || documents[index - 1]?.groupTitle !== doc.groupTitle || documents[index - 1]?.description !== doc.description;
         const wrapperStart = hasUrl
           ? `<a href="${doc.url}" download style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid ${itemBorderColor};border-radius:8px;margin-bottom:${index === documents.length - 1 ? 0 : (props.gap || 8)}px;text-decoration:none;color:inherit;">`
           : `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid ${itemBorderColor};border-radius:8px;margin-bottom:${index === documents.length - 1 ? 0 : (props.gap || 8)}px;">`;
@@ -749,6 +912,7 @@ function renderNode(nodeId: string, nodes: SerializedNodes): string {
           : "";
 
         return `
+          ${showGroupHeader ? `<div style="margin:${index === 0 ? "0" : "12px"} 0 10px 0;"><div style="font-size:${Math.max((props.titleFontSize || 14) + 2, 14)}px;font-weight:700;color:${props.titleColor || "#1f2937"};">${doc.groupTitle}</div>${doc.description ? `<div style="font-size:12px;color:${props.metaColor || "#9ca3af"};margin-top:3px;">${doc.description}</div>` : ""}</div>` : ""}
           ${wrapperStart}
             <div style="width:40px;height:40px;border-radius:8px;background:${props.accentColor ? `${props.accentColor}20` : "#f3f4f6"};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${props.accentColor || "#6b7280"};flex-shrink:0;">${safeType}</div>
             <div style="flex:1;min-width:0;">

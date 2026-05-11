@@ -2,6 +2,10 @@ import { useNode } from "@craftjs/core";
 import { useDeviceMode } from "../VisualBlockEditor";
 
 interface DocumentItem {
+  id?: string;
+  groupTitle?: string;
+  description?: string;
+  sortOrder?: number;
   title?: string;
   type?: string;
   fileType?: string;
@@ -9,6 +13,18 @@ interface DocumentItem {
   document_url?: string;
   size?: string;
   fileSize?: string;
+  image?: string;
+  doc_img?: string;
+  order?: number;
+  subDocs?: Array<{
+    id?: string;
+    doc_name?: string;
+    doc_img?: string;
+    document_url?: string;
+    type?: string;
+    size?: string;
+    order?: number;
+  }>;
 }
 
 export interface CraftDocumentsProps {
@@ -112,7 +128,35 @@ export const CraftDocuments = ({
   const normalizeDocuments = (rawDocuments: unknown): DocumentItem[] => {
     if (!Array.isArray(rawDocuments)) return [];
 
-    return rawDocuments.map((item, index) => ({
+    const flattened = rawDocuments.flatMap((item, groupIndex) => {
+      if (Array.isArray((item as DocumentItem)?.subDocs)) {
+        return ((item as DocumentItem).subDocs || []).map((subDoc, subIndex) => ({
+          id: subDoc.id,
+          groupTitle: typeof (item as DocumentItem).title === "string" ? (item as DocumentItem).title : "Documents",
+          description: typeof (item as DocumentItem).description === "string" ? (item as DocumentItem).description : "",
+          sortOrder: typeof (item as DocumentItem).sortOrder === "number" ? (item as DocumentItem).sortOrder : groupIndex + 1,
+          title: typeof subDoc?.doc_name === "string" && subDoc.doc_name.trim()
+            ? subDoc.doc_name
+            : `Document ${subIndex + 1}`,
+          type: typeof subDoc?.type === "string" && subDoc.type.trim() ? subDoc.type : "pdf",
+          fileType: typeof subDoc?.type === "string" ? subDoc.type : "pdf",
+          url: typeof subDoc?.document_url === "string" ? subDoc.document_url : "",
+          document_url: typeof subDoc?.document_url === "string" ? subDoc.document_url : "",
+          size: typeof subDoc?.size === "string" ? subDoc.size : "",
+          fileSize: typeof subDoc?.size === "string" ? subDoc.size : "",
+          image: typeof subDoc?.doc_img === "string" ? subDoc.doc_img : "",
+          order: typeof subDoc?.order === "number" ? subDoc.order : subIndex + 1,
+        }));
+      }
+
+      return [item];
+    });
+
+    return flattened.map((item, index) => ({
+      id: typeof item?.id === "string" ? item.id : undefined,
+      groupTitle: typeof item?.groupTitle === "string" ? item.groupTitle : "Documents",
+      description: typeof item?.description === "string" ? item.description : "",
+      sortOrder: typeof item?.sortOrder === "number" ? item.sortOrder : 1,
       title: typeof item?.title === "string" && item.title.trim()
         ? item.title
         : `Document ${index + 1}`,
@@ -128,7 +172,12 @@ export const CraftDocuments = ({
         ? item.size
         : (typeof item?.fileSize === "string" ? item.fileSize : ""),
       fileSize: typeof item?.fileSize === "string" ? item.fileSize : "",
-    }));
+      image: typeof item?.image === "string"
+        ? item.image
+        : (typeof item?.doc_img === "string" ? item.doc_img : ""),
+      doc_img: typeof item?.doc_img === "string" ? item.doc_img : "",
+      order: typeof item?.order === "number" ? item.order : index + 1,
+    })).sort((a, b) => ((a.sortOrder || 0) - (b.sortOrder || 0)) || ((a.order || 0) - (b.order || 0)));
   };
 
   let parsedDocuments: DocumentItem[] = [];
@@ -298,40 +347,53 @@ export const CraftDocuments = ({
           const docUrl = doc.url || doc.document_url || "";
           const fileType = doc.type || doc.fileType || "file";
           const fileSize = doc.size || doc.fileSize || "";
+          const showGroupHeader =
+            index === 0 ||
+            parsedDocuments[index - 1]?.groupTitle !== doc.groupTitle ||
+            parsedDocuments[index - 1]?.description !== doc.description;
 
           return (
-            <div
-              key={index}
-              style={
-                index === parsedDocuments.length - 1 ? lastRowStyle : documentRowStyle
-              }
-            >
-              <div style={fileInfoStyle}>
-                <div style={fileTypeBadgeStyle}>{getFileTypeLabel(fileType)}</div>
-                <div style={textWrapperStyle}>
-                  <div style={titleStyle}>{doc.title}</div>
-                  {showFileSize && fileSize && (
-                    <div style={metaStyle}>{fileSize}</div>
-                  )}
+            <div key={doc.id || index}>
+              {showGroupHeader && (
+                <div style={{ marginBottom: "10px", paddingTop: index === 0 ? 0 : "12px" }}>
+                  <div style={{ fontSize: `${Math.max(titleFontSize + 2, 14)}px`, fontWeight: 700, color: titleColor }}>
+                    {doc.groupTitle}
+                  </div>
+                  {doc.description && <div style={{ ...metaStyle, marginTop: "3px" }}>{doc.description}</div>}
                 </div>
-              </div>
-              {showDownloadButton && (
-                docUrl ? (
-                  <a
-                    href={docUrl}
-                    style={downloadButtonStyle}
-                    download
-                    onClick={(e) => {
-                      e.preventDefault();
-                      void triggerDownload(docUrl, getDownloadFileName(doc));
-                    }}
-                  >
-                    Download
-                  </a>
-                ) : (
-                  <span style={disabledDownloadButtonStyle}>Download</span>
-                )
               )}
+              <div
+                style={
+                  index === parsedDocuments.length - 1 ? lastRowStyle : documentRowStyle
+                }
+              >
+                <div style={fileInfoStyle}>
+                  <div style={fileTypeBadgeStyle}>{getFileTypeLabel(fileType)}</div>
+                  <div style={textWrapperStyle}>
+                    <div style={titleStyle}>{doc.title}</div>
+                    {showFileSize && fileSize && (
+                      <div style={metaStyle}>{fileSize}</div>
+                    )}
+                  </div>
+                </div>
+                {showDownloadButton && (
+                  docUrl ? (
+                    <a
+                      href={docUrl}
+                      style={downloadButtonStyle}
+                      download
+                      onClick={(e) => {
+                        e.preventDefault();
+                        void triggerDownload(docUrl, getDownloadFileName(doc));
+                      }}
+                    >
+                      Download
+                    </a>
+                  ) : (
+                    <span style={disabledDownloadButtonStyle}>Download</span>
+                  )
+                )}
+              </div>
             </div>
           );
         })

@@ -16,6 +16,13 @@ export const quoteBlockPresetContent = (
     width="100%"
   >
     <CraftQuote
+      quotes={JSON.stringify([
+        {
+          quote_text: "The best way to predict the future is to create it.",
+          author: "Peter Drucker",
+          order: 1,
+        },
+      ])}
       quote="The best way to predict the future is to create it."
       author="Peter Drucker"
       accentStyle="left-bar"

@@ -1,18 +1,28 @@
 import { useNode } from "@craftjs/core";
 import { VideoIcon } from "lucide-react";
 import { useDeviceMode } from "../VisualBlockEditor";
+import { concatImgURL } from "../../config/function";
 
 export interface CraftVideoProps {
   videoType?: "youtube" | "native";
+  video_type?: "youtube" | "native";
   src?: string;
+  video_url?: string;
   videoId?: string;
+  video_id?: string;
   thumbnail?: string;
+  thumbnail_url?: string;
   width?: string;
   height?: string;
   borderRadius?: number;
   autoplay?: boolean;
   muted?: boolean;
   loop?: boolean;
+  controls?: boolean;
+  playsInline?: boolean;
+  objectFit?: "cover" | "contain" | "fill";
+  preload?: "auto" | "metadata" | "none";
+  showThumbnail?: boolean;
   margin?: number;
   opacity?: number;
   /** Responsive overrides */
@@ -34,15 +44,24 @@ function extractYouTubeId(url: string): string {
 
 export const CraftVideo = ({
   videoType = "youtube",
+  video_type,
   src = "",
+  video_url = "",
   videoId = "",
+  video_id = "",
   thumbnail = "",
+  thumbnail_url = "",
   width = "100%",
   height = "315px",
   borderRadius = 0,
   autoplay = false,
   muted = false,
   loop = false,
+  controls = true,
+  playsInline = true,
+  objectFit = "cover",
+  preload = "metadata",
+  showThumbnail = true,
   margin = 0,
   opacity = 1,
   tabletWidth = "",
@@ -80,11 +99,21 @@ export const CraftVideo = ({
     if (mobileHeight) activeHeight = mobileHeight;
   }
 
-  const resolvedVideoId = videoId || (src ? extractYouTubeId(src) : "");
-  const hasVideo = videoType === "youtube" ? !!resolvedVideoId : !!src;
+  const resolvedVideoType = video_type || videoType;
+  const resolvedSrc = video_url || src;
+  const resolvedVideoId = video_id || videoId || (resolvedSrc ? extractYouTubeId(resolvedSrc) : "");
+  const hasVideo = resolvedVideoType === "youtube" ? !!resolvedVideoId : !!resolvedSrc;
 
   // Auto-generate YouTube thumbnail if not provided
-  const thumbnailUrl = thumbnail || (resolvedVideoId ? `https://i.ytimg.com/vi/${resolvedVideoId}/maxresdefault.jpg` : "");
+  const thumbnailUrl = thumbnail_url || thumbnail || (resolvedVideoId ? `https://i.ytimg.com/vi/${resolvedVideoId}/maxresdefault.jpg` : "");
+  const embedParams = new URLSearchParams();
+  if (autoplay) embedParams.set("autoplay", "1");
+  if (muted) embedParams.set("mute", "1");
+  if (loop) {
+    embedParams.set("loop", "1");
+    if (resolvedVideoId) embedParams.set("playlist", resolvedVideoId);
+  }
+  const embedQuery = embedParams.toString();
 
   return (
     <div
@@ -103,24 +132,34 @@ export const CraftVideo = ({
       }}
     >
       {hasVideo ? (
-        videoType === "youtube" ? (
+        resolvedVideoType === "youtube" ? (
           <div style={{ position: "relative", width: "100%", height: activeHeight }}>
             <iframe
-              src={`https://www.youtube.com/embed/${resolvedVideoId}${autoplay ? "?autoplay=1" : ""}`}
+              src={`https://www.youtube.com/embed/${resolvedVideoId}${embedQuery ? `?${embedQuery}` : ""}`}
               style={{ width: "100%", height: activeHeight, border: "none", borderRadius: `${borderRadius}px`, pointerEvents: "none" }}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
             />
+            {showThumbnail && thumbnailUrl && !autoplay && (
+              <img
+                src={concatImgURL(thumbnailUrl)}
+                alt="Video thumbnail"
+                style={{ position: "absolute", inset: 0, width: "100%", height: activeHeight, objectFit, borderRadius: `${borderRadius}px`, opacity: 0, pointerEvents: "none" }}
+                draggable={false}
+              />
+            )}
           </div>
         ) : (
           <video
-            src={src}
-            poster={thumbnailUrl}
-            controls={false}
+            src={concatImgURL(resolvedSrc)}
+            poster={showThumbnail && thumbnailUrl ? concatImgURL(thumbnailUrl) : undefined}
+            controls={controls}
             autoPlay={autoplay}
             muted={muted}
             loop={loop}
-            style={{ width: "100%", height: activeHeight, objectFit: "cover", borderRadius: `${borderRadius}px`, pointerEvents: "none" }}
+            playsInline={playsInline}
+            preload={preload}
+            style={{ width: "100%", height: activeHeight, objectFit, borderRadius: `${borderRadius}px`, pointerEvents: "none" }}
           />
         )
       ) : (
@@ -153,15 +192,24 @@ CraftVideo.craft = {
   displayName: "Video",
   props: {
     videoType: "youtube",
+    video_type: undefined,
     src: "",
+    video_url: "",
     videoId: "",
+    video_id: "",
     thumbnail: "",
+    thumbnail_url: "",
     width: "100%",
     height: "315px",
     borderRadius: 0,
     autoplay: false,
     muted: false,
     loop: false,
+    controls: true,
+    playsInline: true,
+    objectFit: "cover",
+    preload: "metadata",
+    showThumbnail: true,
     margin: 0,
     opacity: 1,
     tabletWidth: "",

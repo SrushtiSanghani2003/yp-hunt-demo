@@ -16,6 +16,16 @@ export const feedbackBlockPresetContent = (
     width="100%"
   >
     <CraftTestimonial
+      quotes={JSON.stringify([
+        {
+          quote_img_url: "",
+          author: "Jane Doe",
+          job_title: "CEO, Company Inc.",
+          rating: 5,
+          quote_text: "This product has completely transformed our workflow. Highly recommended!",
+          order: 1,
+        },
+      ])}
       quote="This product has completely transformed our workflow. Highly recommended!"
       authorName="Jane Doe"
       authorTitle="CEO, Company Inc."

@@ -104,13 +104,13 @@ const toolboxItems: ToolboxItemConfig[] = [
     element: <CraftDivider />,
     group: "Basic",
   },
-  {
-    name: "HTML",
-    icon: <Code size={18} />,
-    description: "Custom HTML code block",
-    element: <CraftHtml />,
-    group: "Basic",
-  },
+  // {
+  //   name: "HTML",
+  //   icon: <Code size={18} />,
+  //   description: "Custom HTML code block",
+  //   element: <CraftHtml />,
+  //   group: "Basic",
+  // },
 
   // ---- Content Blocks ----
   {

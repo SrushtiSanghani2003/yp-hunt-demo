@@ -10,6 +10,8 @@ import { MODULE_CONFIG } from "../components/CraftSection";
 import type { SectionModuleType } from "../components/CraftSection";
 import { bentoLayouts } from "../../components/blocks/bentobox/bentoLayouts";
 import { extractYouTubeId } from "../../config/function";
+import FroalaEditor from "../../components/blocks/FroalaEditor";
+import froalaConfig from "../../components/blocks/froalaConfig";
 
 /**
  * Settings panel — reads the selected node's props and renders
@@ -48,6 +50,63 @@ const BENTO_STYLE_OPTIONS = Object.keys(bentoLayouts).map((key) => ({
   value: key,
   label: key,
 }));
+
+type FroalaToolbarGroup = {
+  buttons: string[];
+  buttonsVisible?: number;
+  [key: string]: unknown;
+};
+
+const froalaToolbarButtons = froalaConfig.toolbarButtons as Record<string, FroalaToolbarGroup>;
+const froalaEvents = froalaConfig.events as Record<string, (...args: unknown[]) => void>;
+
+const textFieldToolbarButtons = {
+  moreText: {
+    ...froalaToolbarButtons.moreText,
+    buttonsVisible: froalaToolbarButtons.moreText.buttons.length,
+  },
+  moreParagraph: {
+    ...froalaToolbarButtons.moreParagraph,
+    buttonsVisible: froalaToolbarButtons.moreParagraph.buttons.length,
+  },
+  moreRich: {
+    ...froalaToolbarButtons.moreRich,
+    buttonsVisible: froalaToolbarButtons.moreRich.buttons.length,
+  },
+  moreMisc: {
+    ...froalaToolbarButtons.moreMisc,
+    buttonsVisible: froalaToolbarButtons.moreMisc.buttons.length,
+  },
+};
+
+const textFieldFroalaConfig: Record<string, unknown> = {
+  ...froalaConfig,
+  heightMin: 180,
+  heightMax: 420,
+  charCounterCount: false,
+  quickInsertEnabled: false,
+  toolbarSticky: false,
+  toolbarButtons: textFieldToolbarButtons,
+  toolbarButtonsMD: textFieldToolbarButtons,
+  toolbarButtonsSM: textFieldToolbarButtons,
+  toolbarButtonsXS: textFieldToolbarButtons,
+  events: {
+    ...froalaEvents,
+    initialized: function (this: {
+      el?: HTMLElement;
+      events?: { focus?: () => void };
+      selection?: { setAtEnd?: (element: HTMLElement) => void };
+    }, ...args: unknown[]) {
+      froalaEvents.initialized?.apply(this, args);
+      window.setTimeout(() => {
+        this.events?.focus?.();
+        if (this.el) {
+          this.selection?.setAtEnd?.(this.el);
+        }
+      }, 0);
+    },
+  },
+};
 
 /** Groups that belong to the "form" tab (content, data, display toggles) */
 const FORM_GROUPS = new Set([
@@ -238,13 +297,27 @@ const componentSettings: Record<string, PropConfig[]> = {
     },
     { key: "src", label: "Video Source", type: "video-upload", group: "Content", uploadType: "block" },
     { key: "videoId", label: "YouTube ID (Auto)", type: "text", group: "Content" },
+    { key: "thumbnail", label: "Thumbnail", type: "image-upload", group: "Content", uploadType: "block" },
+    { key: "showThumbnail", label: "Show Thumbnail", type: "toggle", group: "Content" },
     { key: "width", label: "Width", type: "text", group: "Dimensions", placeholder: "100%" },
     { key: "height", label: "Height", type: "text", group: "Dimensions", placeholder: "315px" },
+    {
+      key: "objectFit", label: "Object Fit", type: "select", options: [
+        { value: "cover", label: "Cover" }, { value: "contain", label: "Contain" }, { value: "fill", label: "Fill" },
+      ], group: "Dimensions"
+    },
     { key: "borderRadius", label: "Radius", type: "slider", min: 0, max: 30, step: 1, group: "Style" },
     { key: "opacity", label: "Opacity", type: "slider", min: 0, max: 1, step: 0.05, group: "Style" },
     { key: "autoplay", label: "Autoplay", type: "toggle", group: "Playback" },
     { key: "muted", label: "Muted", type: "toggle", group: "Playback" },
     { key: "loop", label: "Loop", type: "toggle", group: "Playback" },
+    { key: "controls", label: "Controls", type: "toggle", group: "Playback" },
+    { key: "playsInline", label: "Plays Inline", type: "toggle", group: "Playback" },
+    {
+      key: "preload", label: "Preload", type: "select", options: [
+        { value: "metadata", label: "Metadata" }, { value: "auto", label: "Auto" }, { value: "none", label: "None" },
+      ], group: "Playback"
+    },
     { key: "tabletWidth", label: "Tablet Width", type: "text", group: "Responsive", placeholder: "Same as desktop" },
     { key: "mobileWidth", label: "Mobile Width", type: "text", group: "Responsive", placeholder: "100%" },
     { key: "tabletHeight", label: "Tablet Height", type: "text", group: "Responsive", placeholder: "Same as desktop" },
@@ -490,11 +563,14 @@ const componentSettings: Record<string, PropConfig[]> = {
   ],
 
   Testimonial: [
+    { key: "quotes", label: "Testimonials", type: "textarea", group: "Content" },
     { key: "quote", label: "Quote Text", type: "textarea", group: "Content" },
     { key: "authorName", label: "Author Name", type: "text", group: "Content" },
     { key: "authorTitle", label: "Author Title", type: "text", group: "Content" },
     { key: "authorImage", label: "Author Image", type: "image-upload", group: "Content", uploadType: "block" },
     { key: "rating", label: "Rating", type: "slider", min: 0, max: 5, step: 1, group: "Content" },
+    { key: "limit", label: "Limit", type: "slider", min: 0, max: 12, step: 1, group: "Content" },
+    { key: "columns", label: "Columns", type: "slider", min: 1, max: 6, step: 1, group: "Layout" },
     {
       key: "layout", label: "Layout", type: "select", options: [
         { value: "card", label: "Card" }, { value: "minimal", label: "Minimal" }, { value: "centered", label: "Centered" },
@@ -512,6 +588,8 @@ const componentSettings: Record<string, PropConfig[]> = {
     { key: "padding", label: "Padding", type: "slider", min: 0, max: 64, step: 1, group: "Spacing" },
     { key: "tabletFontSize", label: "Tablet Font Size", type: "slider", min: 12, max: 28, step: 1, group: "Responsive" },
     { key: "mobileFontSize", label: "Mobile Font Size", type: "slider", min: 12, max: 28, step: 1, group: "Responsive" },
+    { key: "tabletColumns", label: "Tablet Columns", type: "slider", min: 1, max: 4, step: 1, group: "Responsive" },
+    { key: "mobileColumns", label: "Mobile Columns", type: "slider", min: 1, max: 3, step: 1, group: "Responsive" },
     { key: "tabletPadding", label: "Tablet Padding", type: "slider", min: 0, max: 64, step: 1, group: "Responsive" },
     { key: "mobilePadding", label: "Mobile Padding", type: "slider", min: 0, max: 64, step: 1, group: "Responsive" },
     { key: "hideOnMobile", label: "Hide on Mobile", type: "toggle", group: "Responsive" },
@@ -579,6 +657,7 @@ const componentSettings: Record<string, PropConfig[]> = {
       ], group: "Layout"
     },
     { key: "showImage", label: "Show Image", type: "toggle", group: "Display" },
+    { key: "showBio", label: "Show Bio", type: "toggle", group: "Display" },
     { key: "imageSize", label: "Avatar Size", type: "slider", min: 40, max: 120, step: 4, group: "Style" },
     { key: "cardBackgroundColor", label: "Card BG", type: "color", group: "Style" },
     { key: "cardBorderRadius", label: "Card Radius", type: "slider", min: 0, max: 24, step: 1, group: "Style" },
@@ -586,8 +665,10 @@ const componentSettings: Record<string, PropConfig[]> = {
     { key: "cardBorderColor", label: "Border Color", type: "color", group: "Style" },
     { key: "nameFontSize", label: "Name Size", type: "slider", min: 12, max: 24, step: 1, group: "Typography" },
     { key: "roleFontSize", label: "Role Size", type: "slider", min: 10, max: 18, step: 1, group: "Typography" },
+    { key: "bioFontSize", label: "Bio Size", type: "slider", min: 10, max: 18, step: 1, group: "Typography" },
     { key: "nameColor", label: "Name Color", type: "color", group: "Typography" },
     { key: "roleColor", label: "Role Color", type: "color", group: "Typography" },
+    { key: "bioColor", label: "Bio Color", type: "color", group: "Typography" },
     { key: "width", label: "Width", type: "text", group: "Dimensions", placeholder: "100%" },
     { key: "height", label: "Height", type: "text", group: "Dimensions", placeholder: "auto" },
     { key: "padding", label: "Padding", type: "slider", min: 0, max: 64, step: 1, group: "Spacing" },
@@ -603,11 +684,13 @@ const componentSettings: Record<string, PropConfig[]> = {
   Contact: [
     { key: "title", label: "Title", type: "text", group: "Content" },
     { key: "description", label: "Description", type: "textarea", group: "Content" },
+    { key: "contacts", label: "Contacts", type: "textarea", group: "Content" },
     { key: "phone", label: "Phone", type: "text", group: "Content" },
     { key: "email", label: "Email", type: "text", group: "Content" },
     { key: "address", label: "Address", type: "textarea", group: "Content" },
     { key: "showMap", label: "Show Map", type: "toggle", group: "Content" },
     { key: "mapEmbedUrl", label: "Map Embed URL", type: "text", group: "Content", placeholder: "https://..." },
+    { key: "showDescription", label: "Show Description", type: "toggle", group: "Content" },
     {
       key: "layout", label: "Layout", type: "select", options: [
         { value: "vertical", label: "Vertical" }, { value: "horizontal", label: "Horizontal" },
@@ -634,6 +717,7 @@ const componentSettings: Record<string, PropConfig[]> = {
   ],
 
   Quote: [
+    { key: "quotes", label: "Quotes", type: "textarea", group: "Content" },
     { key: "quote", label: "Quote Text", type: "textarea", group: "Content" },
     { key: "author", label: "Author", type: "text", group: "Content" },
     { key: "source", label: "Source", type: "text", group: "Content" },
@@ -883,6 +967,17 @@ const componentSettings: Record<string, PropConfig[]> = {
     { key: "hideOnDesktop", label: "Hide on Desktop", type: "toggle", group: "Responsive" },
   ],
 };
+
+function getComponentSettingsKey(componentName: string): string {
+  const aliases: Record<string, string> = {
+    "Team Members": "Team",
+    CraftTeam: "Team",
+    "Contact Info": "Contact",
+    CraftContact: "Contact",
+  };
+
+  return aliases[componentName] || componentName;
+}
 
 /* ------------------------------------------------------------------ */
 /*  File upload helper — sends to /articles/upload/{type}             */
@@ -1265,10 +1360,14 @@ function SettingsControl({
   config,
   value,
   onChange,
+  componentName,
+  selectedProps,
 }: {
   config: PropConfig;
   value: any;
   onChange: (key: string, value: any) => void;
+  componentName?: string;
+  selectedProps?: Record<string, any>;
 }) {
   const { key, label, type, placeholder } = config;
 
@@ -1322,8 +1421,29 @@ function SettingsControl({
         </div>
       );
 
-    case "textarea":
+    case "textarea": {
       const isTextContentTextarea = key === "text";
+      const isTextRichEditor = componentName === "Text" && isTextContentTextarea;
+
+      if (isTextRichEditor) {
+        return (
+          <div className="vb-text-field-rich-editor" style={{ marginBottom: "8px" }}>
+            <label style={labelStyle}>{label}</label>
+            <FroalaEditor
+              model={value ?? ""}
+              onModelChange={(nextValue) => {
+                if (!selectedProps?.richText) {
+                  onChange("richText", true);
+                }
+                onChange(key, nextValue);
+              }}
+              config={textFieldFroalaConfig}
+              showThemeToggle={false}
+            />
+          </div>
+        );
+      }
+
       return (
         <div style={{ marginBottom: "8px" }}>
           <label style={labelStyle}>{label}</label>
@@ -1357,6 +1477,7 @@ function SettingsControl({
           />
         </div>
       );
+    }
 
     case "number":
       return (
@@ -1732,23 +1853,77 @@ interface TCardEditorItem {
   description: string;
 }
 
+interface TestimonialEditorItem {
+  id?: string;
+  quote_img_url: string;
+  author: string;
+  job_title: string;
+  rating: number;
+  quote_text: string;
+  order: number;
+}
+
+interface QuoteEditorItem {
+  id?: string;
+  quote_text: string;
+  author: string;
+  order: number;
+}
+
 interface TeamMemberEditorItem {
+  id?: string;
   name: string;
-  role: string;
-  image: string;
+  designation: string;
+  short_bio: string;
+  image_url: string;
+  order: number;
+}
+
+interface ContactValueEditorItem {
+  value: string;
+}
+
+interface ContactEditorItem {
+  id?: string;
+  title: string;
+  description: string;
+  phone: ContactValueEditorItem[];
+  email: ContactValueEditorItem[];
+  order: number;
 }
 
 interface TimelineEditorItem {
+  id?: string;
   title: string;
   date: string;
   description: string;
+  tagline_title: string;
+  imageUrl: string;
+  videoSource: "native" | "youtube";
+  videoUrl: string;
+  videoThumbnail: string;
+  mediaType: "image" | "video" | null;
+  mediaAlignment: "left" | "right";
+  is_form: boolean;
+  more: {
+    title?: string;
+    description?: string;
+    link?: string;
+  };
+  order: number;
 }
 
 interface DocumentEditorItem {
+  id?: string;
+  groupTitle: string;
+  description: string;
+  sortOrder: number;
   title: string;
   type: string;
   url: string;
   size: string;
+  image?: string;
+  order: number;
 }
 
 interface MeetingEditorItem {
@@ -1811,28 +1986,84 @@ function createDefaultTCardItem(index = 0): TCardEditorItem {
   };
 }
 
+function createDefaultTestimonialItem(index = 0): TestimonialEditorItem {
+  return {
+    id: `testimonial-${Date.now()}-${index}`,
+    quote_img_url: "",
+    author: `Author ${index + 1}`,
+    job_title: "",
+    rating: 0,
+    quote_text: "",
+    order: index + 1,
+  };
+}
+
+function createDefaultQuoteItem(index = 0): QuoteEditorItem {
+  return {
+    id: `quote-${Date.now()}-${index}`,
+    quote_text: "",
+    author: "",
+    order: index + 1,
+  };
+}
+
 function createDefaultTeamMemberItem(index = 0): TeamMemberEditorItem {
   return {
+    id: `team-member-${Date.now()}-${index}`,
     name: `Member ${index + 1}`,
-    role: "",
-    image: "",
+    designation: "",
+    short_bio: "",
+    image_url: "",
+    order: index + 1,
+  };
+}
+
+function createDefaultContactItem(index = 0): ContactEditorItem {
+  return {
+    id: `contact-${Date.now()}-${index}`,
+    title: `Contact ${index + 1}`,
+    description: "",
+    phone: [{ value: "" }],
+    email: [{ value: "" }],
+    order: index + 1,
   };
 }
 
 function createDefaultTimelineItem(index = 0): TimelineEditorItem {
   return {
+    id: `timeline-${Date.now()}-${index}`,
     title: `Milestone ${index + 1}`,
     date: "",
     description: "",
+    tagline_title: "",
+    imageUrl: "",
+    videoSource: "native",
+    videoUrl: "",
+    videoThumbnail: "",
+    mediaType: null,
+    mediaAlignment: "left",
+    is_form: false,
+    more: {
+      title: "",
+      description: "",
+      link: "",
+    },
+    order: index + 1,
   };
 }
 
 function createDefaultDocumentItem(index = 0): DocumentEditorItem {
   return {
+    id: `document-${Date.now()}-${index}`,
+    groupTitle: "Documents",
+    description: "",
+    sortOrder: 1,
     title: `Document ${index + 1}`,
     type: "pdf",
     url: "",
     size: "",
+    image: "",
+    order: index + 1,
   };
 }
 
@@ -2070,17 +2301,156 @@ function sanitizeTCardItemsValue(value: unknown): TCardEditorItem[] {
   return [];
 }
 
+function sanitizeTestimonialsValue(value: unknown, fallback?: Record<string, any>): TestimonialEditorItem[] {
+  const normalize = (items: any[]): TestimonialEditorItem[] =>
+    items
+      .map((item, index) => ({
+        id: typeof item?.id === "string" ? item.id : `testimonial-${index}`,
+        quote_img_url: typeof item?.quote_img_url === "string"
+          ? item.quote_img_url
+          : (typeof item?.authorImage === "string"
+            ? item.authorImage
+            : (typeof item?.avatarUrl === "string" ? item.avatarUrl : "")),
+        author: typeof item?.author === "string" && item.author.trim()
+          ? item.author
+          : (typeof item?.authorName === "string" && item.authorName.trim() ? item.authorName : `Author ${index + 1}`),
+        job_title: typeof item?.job_title === "string"
+          ? item.job_title
+          : (typeof item?.authorTitle === "string"
+            ? item.authorTitle
+            : (typeof item?.role === "string" ? item.role : "")),
+        rating: Number.isFinite(Number(item?.rating)) ? Number(item.rating) : 0,
+        quote_text: typeof item?.quote_text === "string"
+          ? item.quote_text
+          : (typeof item?.quote === "string" ? item.quote : ""),
+        order: typeof item?.order === "number" ? item.order : index + 1,
+      }))
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  if (Array.isArray(value)) {
+    return normalize(value);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return normalize(parsed);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  if (fallback?.quote || fallback?.authorName || fallback?.authorTitle || fallback?.authorImage) {
+    return normalize([{
+      quote: fallback.quote,
+      authorName: fallback.authorName,
+      authorTitle: fallback.authorTitle,
+      authorImage: fallback.authorImage,
+      rating: fallback.rating,
+    }]);
+  }
+
+  return [];
+}
+
+function sanitizeQuotesValue(value: unknown, fallback?: Record<string, any>): QuoteEditorItem[] {
+  const normalize = (items: any[]): QuoteEditorItem[] =>
+    items
+      .map((item, index) => ({
+        id: typeof item?.id === "string" ? item.id : `quote-${index}`,
+        quote_text: typeof item?.quote_text === "string"
+          ? item.quote_text
+          : (typeof item?.quote === "string" ? item.quote : ""),
+        author: typeof item?.author === "string" ? item.author : "",
+        order: typeof item?.order === "number" ? item.order : index + 1,
+      }))
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  if (Array.isArray(value)) {
+    return normalize(value);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return normalize(parsed);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  if (fallback?.quote || fallback?.author) {
+    return normalize([{ quote: fallback.quote, author: fallback.author }]);
+  }
+
+  return [];
+}
+
 function sanitizeTeamMembersValue(value: unknown): TeamMemberEditorItem[] {
   const normalize = (items: any[]): TeamMemberEditorItem[] =>
     items.map((item, index) => ({
+      id: typeof item?.id === "string" ? item.id : `team-member-${index}`,
       name: typeof item?.name === "string" && item.name.trim()
         ? item.name
         : `Member ${index + 1}`,
-      role: typeof item?.role === "string" ? item.role : "",
-      image: typeof item?.image === "string"
-        ? item.image
-        : (typeof item?.avatar === "string" ? item.avatar : ""),
-    }));
+      designation: typeof item?.designation === "string"
+        ? item.designation
+        : (typeof item?.role === "string" ? item.role : ""),
+      short_bio: typeof item?.short_bio === "string"
+        ? item.short_bio
+        : (typeof item?.bio === "string" ? item.bio : ""),
+      image_url: typeof item?.image_url === "string"
+        ? item.image_url
+        : (typeof item?.image === "string"
+          ? item.image
+          : (typeof item?.avatar === "string" ? item.avatar : "")),
+      order: typeof item?.order === "number" ? item.order : index + 1,
+    })).sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  if (Array.isArray(value)) {
+    return normalize(value);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return normalize(parsed);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function sanitizeContactValues(value: unknown): ContactValueEditorItem[] {
+  if (!Array.isArray(value)) return [{ value: "" }];
+
+  const normalized = value.map((item: any) => ({
+    value: typeof item?.value === "string" ? item.value : (typeof item === "string" ? item : ""),
+  }));
+
+  return normalized.length > 0 ? normalized : [{ value: "" }];
+}
+
+function sanitizeContactsValue(value: unknown): ContactEditorItem[] {
+  const normalize = (items: any[]): ContactEditorItem[] =>
+    items.map((item, index) => ({
+      id: typeof item?.id === "string" ? item.id : `contact-${index}`,
+      title: typeof item?.title === "string" && item.title.trim()
+        ? item.title
+        : `Contact ${index + 1}`,
+      description: typeof item?.description === "string" ? item.description : "",
+      phone: sanitizeContactValues(item?.phone),
+      email: sanitizeContactValues(item?.email),
+      order: typeof item?.order === "number" ? item.order : index + 1,
+    })).sort((a, b) => (a.order || 0) - (b.order || 0));
 
   if (Array.isArray(value)) {
     return normalize(value);
@@ -2102,13 +2472,48 @@ function sanitizeTeamMembersValue(value: unknown): TeamMemberEditorItem[] {
 
 function sanitizeTimelineItemsValue(value: unknown): TimelineEditorItem[] {
   const normalize = (items: any[]): TimelineEditorItem[] =>
-    items.map((item, index) => ({
-      title: typeof item?.title === "string" && item.title.trim()
-        ? item.title
-        : `Milestone ${index + 1}`,
-      date: typeof item?.date === "string" ? item.date : "",
-      description: typeof item?.description === "string" ? item.description : "",
-    }));
+    items
+      .map((item, index) => {
+        const more = item?.more && typeof item.more === "object" ? item.more : {};
+        const title = typeof item?.title === "string" && item.title.trim()
+          ? item.title
+          : (typeof more?.title === "string" && more.title.trim() ? more.title : `Milestone ${index + 1}`);
+        const description = typeof item?.description === "string"
+          ? item.description
+          : (typeof more?.description === "string" ? more.description : "");
+
+        return {
+          id: typeof item?.id === "string" ? item.id : `timeline-${index}`,
+          title,
+          date: typeof item?.date === "string"
+            ? item.date
+            : (typeof item?.tagline_title === "string" ? item.tagline_title : ""),
+          description,
+          tagline_title: typeof item?.tagline_title === "string"
+            ? item.tagline_title
+            : (typeof item?.date === "string" ? item.date : ""),
+          imageUrl: typeof item?.imageUrl === "string"
+            ? item.imageUrl
+            : (typeof item?.image === "string" ? item.image : ""),
+          videoSource: (item?.videoSource === "youtube" ? "youtube" : "native") as "youtube" | "native",
+          videoUrl: typeof item?.videoUrl === "string"
+            ? item.videoUrl
+            : (typeof item?.video_url === "string" ? item.video_url : ""),
+          videoThumbnail: typeof item?.videoThumbnail === "string"
+            ? item.videoThumbnail
+            : (typeof item?.videoThumbnailUrl === "string" ? item.videoThumbnailUrl : ""),
+          mediaType: item?.mediaType === "image" || item?.mediaType === "video" ? item.mediaType : null,
+          mediaAlignment: (item?.mediaAlignment === "right" ? "right" : "left") as "left" | "right",
+          is_form: Boolean(item?.is_form),
+          more: {
+            title: typeof more?.title === "string" ? more.title : title,
+            description: typeof more?.description === "string" ? more.description : description,
+            link: typeof more?.link === "string" ? more.link : "",
+          },
+          order: typeof item?.order === "number" ? item.order : index + 1,
+        };
+      })
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
 
   if (Array.isArray(value)) {
     return normalize(value);
@@ -2129,21 +2534,53 @@ function sanitizeTimelineItemsValue(value: unknown): TimelineEditorItem[] {
 }
 
 function sanitizeDocumentsValue(value: unknown): DocumentEditorItem[] {
-  const normalize = (items: any[]): DocumentEditorItem[] =>
-    items.map((item, index) => ({
-      title: typeof item?.title === "string" && item.title.trim()
-        ? item.title
-        : `Document ${index + 1}`,
-      type: typeof item?.type === "string" && item.type.trim()
-        ? item.type
-        : (typeof item?.fileType === "string" && item.fileType.trim() ? item.fileType : "pdf"),
-      url: typeof item?.url === "string"
-        ? item.url
-        : (typeof item?.document_url === "string" ? item.document_url : ""),
-      size: typeof item?.size === "string"
-        ? item.size
-        : (typeof item?.fileSize === "string" ? item.fileSize : ""),
-    }));
+  const normalize = (items: any[]): DocumentEditorItem[] => {
+    const flattened = items.flatMap((item, groupIndex) => {
+      if (Array.isArray(item?.subDocs)) {
+        return item.subDocs.map((subDoc: any, subIndex: number) => ({
+          id: subDoc?.id ?? `document-${groupIndex}-${subIndex}`,
+          groupTitle: typeof item?.title === "string" ? item.title : "Documents",
+          description: typeof item?.description === "string" ? item.description : "",
+          sortOrder: typeof item?.sortOrder === "number" ? item.sortOrder : groupIndex + 1,
+          title: typeof subDoc?.doc_name === "string" && subDoc.doc_name.trim()
+            ? subDoc.doc_name
+            : `Document ${subIndex + 1}`,
+          type: typeof subDoc?.type === "string" && subDoc.type.trim() ? subDoc.type : "pdf",
+          url: typeof subDoc?.document_url === "string" ? subDoc.document_url : "",
+          size: typeof subDoc?.size === "string" ? subDoc.size : "",
+          image: typeof subDoc?.doc_img === "string" ? subDoc.doc_img : "",
+          order: typeof subDoc?.order === "number" ? subDoc.order : subIndex + 1,
+        }));
+      }
+
+      return [{
+        id: item?.id ?? `document-${groupIndex}`,
+        groupTitle: typeof item?.groupTitle === "string"
+          ? item.groupTitle
+          : (typeof item?.category === "string" ? item.category : "Documents"),
+        description: typeof item?.description === "string" ? item.description : "",
+        sortOrder: typeof item?.sortOrder === "number" ? item.sortOrder : 1,
+        title: typeof item?.title === "string" && item.title.trim()
+          ? item.title
+          : `Document ${groupIndex + 1}`,
+        type: typeof item?.type === "string" && item.type.trim()
+          ? item.type
+          : (typeof item?.fileType === "string" && item.fileType.trim() ? item.fileType : "pdf"),
+        url: typeof item?.url === "string"
+          ? item.url
+          : (typeof item?.document_url === "string" ? item.document_url : ""),
+        size: typeof item?.size === "string"
+          ? item.size
+          : (typeof item?.fileSize === "string" ? item.fileSize : ""),
+        image: typeof item?.image === "string"
+          ? item.image
+          : (typeof item?.doc_img === "string" ? item.doc_img : ""),
+        order: typeof item?.order === "number" ? item.order : groupIndex + 1,
+      }];
+    });
+
+    return flattened.sort((a, b) => (a.sortOrder - b.sortOrder) || (a.order - b.order));
+  };
 
   if (Array.isArray(value)) {
     return normalize(value);
@@ -3502,8 +3939,16 @@ function TeamMembersEditorControl({
   const fileRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const updateMembers = useCallback((nextMembers: TeamMemberEditorItem[]) => {
-    onChange(JSON.stringify(nextMembers));
+    onChange(JSON.stringify(nextMembers.map((member, index) => ({ ...member, order: index + 1 }))));
   }, [onChange]);
+
+  const moveMember = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= members.length) return;
+    const nextMembers = [...members];
+    const [movedMember] = nextMembers.splice(fromIndex, 1);
+    nextMembers.splice(toIndex, 0, movedMember);
+    updateMembers(nextMembers);
+  };
 
   const labelStyle: React.CSSProperties = {
     fontSize: "11px",
@@ -3555,11 +4000,11 @@ function TeamMembersEditorControl({
             <span style={{ fontSize: "11px", fontWeight: 600, color: "#4b5563" }}>
               Member {index + 1}
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                const nextMembers = members.filter((_, i) => i !== index);
-                updateMembers(nextMembers.length > 0 ? nextMembers : [createDefaultTeamMemberItem(0)]);
+              <button
+                type="button"
+                onClick={() => {
+                  const nextMembers = members.filter((_, i) => i !== index);
+                  updateMembers(nextMembers.length > 0 ? nextMembers : [createDefaultTeamMemberItem(0)]);
               }}
               style={{
                 border: "none",
@@ -3578,10 +4023,47 @@ function TeamMembersEditorControl({
             </button>
           </div>
 
-          {member.image && (
+          <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+            <button
+              type="button"
+              disabled={index === 0}
+              onClick={() => moveMember(index, index - 1)}
+              style={{
+                flex: 1,
+                padding: "5px 8px",
+                fontSize: "11px",
+                border: "1px solid #e5e7eb",
+                borderRadius: "6px",
+                backgroundColor: "#fff",
+                color: index === 0 ? "#d1d5db" : "#4b5563",
+                cursor: index === 0 ? "not-allowed" : "pointer",
+              }}
+            >
+              Move Up
+            </button>
+            <button
+              type="button"
+              disabled={index === members.length - 1}
+              onClick={() => moveMember(index, index + 1)}
+              style={{
+                flex: 1,
+                padding: "5px 8px",
+                fontSize: "11px",
+                border: "1px solid #e5e7eb",
+                borderRadius: "6px",
+                backgroundColor: "#fff",
+                color: index === members.length - 1 ? "#d1d5db" : "#4b5563",
+                cursor: index === members.length - 1 ? "not-allowed" : "pointer",
+              }}
+            >
+              Move Down
+            </button>
+          </div>
+
+          {member.image_url && (
             <div style={{ marginBottom: "8px" }}>
               <img
-                src={member.image}
+                src={member.image_url}
                 alt={member.name || `Member ${index + 1}`}
                 style={{
                   width: "100%",
@@ -3630,13 +4112,13 @@ function TeamMembersEditorControl({
 
               const localUrl = URL.createObjectURL(file);
               const withLocal = [...members];
-              withLocal[index] = { ...withLocal[index], image: localUrl };
+              withLocal[index] = { ...withLocal[index], image_url: localUrl };
               updateMembers(withLocal);
 
               const serverUrl = await uploadFileToApi(file, "block");
               if (serverUrl) {
                 const withServer = [...withLocal];
-                withServer[index] = { ...withServer[index], image: serverUrl };
+                withServer[index] = { ...withServer[index], image_url: serverUrl };
                 updateMembers(withServer);
                 URL.revokeObjectURL(localUrl);
               }
@@ -3647,10 +4129,10 @@ function TeamMembersEditorControl({
             <label style={fieldLabelStyle}>Image URL</label>
             <input
               type="text"
-              value={member.image}
+              value={member.image_url}
               onChange={(e) => {
                 const nextMembers = [...members];
-                nextMembers[index] = { ...nextMembers[index], image: e.target.value };
+                nextMembers[index] = { ...nextMembers[index], image_url: e.target.value };
                 updateMembers(nextMembers);
               }}
               placeholder="https://..."
@@ -3674,17 +4156,32 @@ function TeamMembersEditorControl({
           </div>
 
           <div>
-            <label style={fieldLabelStyle}>Role</label>
+            <label style={fieldLabelStyle}>Designation</label>
             <input
               type="text"
-              value={member.role}
+              value={member.designation}
               onChange={(e) => {
                 const nextMembers = [...members];
-                nextMembers[index] = { ...nextMembers[index], role: e.target.value };
+                nextMembers[index] = { ...nextMembers[index], designation: e.target.value };
                 updateMembers(nextMembers);
               }}
-              placeholder="Member role"
+              placeholder="Member designation"
               style={inputStyle}
+            />
+          </div>
+
+          <div style={{ marginTop: "8px" }}>
+            <label style={fieldLabelStyle}>Short Bio</label>
+            <textarea
+              value={member.short_bio}
+              onChange={(e) => {
+                const nextMembers = [...members];
+                nextMembers[index] = { ...nextMembers[index], short_bio: e.target.value };
+                updateMembers(nextMembers);
+              }}
+              rows={3}
+              placeholder="Short bio"
+              style={{ ...inputStyle, resize: "vertical", minHeight: "64px" }}
             />
           </div>
         </div>
@@ -3716,6 +4213,418 @@ function TeamMembersEditorControl({
   );
 }
 
+function TestimonialsEditorControl({
+  value,
+  selectedProps,
+  onChange,
+  label,
+}: {
+  value: unknown;
+  selectedProps: Record<string, any>;
+  onChange: (nextValue: string) => void;
+  label: string;
+}) {
+  const parsedItems = sanitizeTestimonialsValue(value, selectedProps);
+  const items = parsedItems.length > 0 ? parsedItems : [createDefaultTestimonialItem(0)];
+  const fileRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  const updateItems = useCallback((nextItems: TestimonialEditorItem[]) => {
+    onChange(JSON.stringify(nextItems.map((item, index) => ({
+      ...item,
+      rating: Math.max(0, Math.min(5, Number(item.rating) || 0)),
+      order: index + 1,
+    }))));
+  }, [onChange]);
+
+  const updateItem = (index: number, patch: Partial<TestimonialEditorItem>) => {
+    const nextItems = [...items];
+    nextItems[index] = { ...nextItems[index], ...patch };
+    updateItems(nextItems);
+  };
+
+  const moveItem = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= items.length) return;
+    const nextItems = [...items];
+    const [movedItem] = nextItems.splice(fromIndex, 1);
+    nextItems.splice(toIndex, 0, movedItem);
+    updateItems(nextItems);
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: "11px",
+    fontWeight: 600,
+    color: "#6b7280",
+    display: "block",
+    marginBottom: "8px",
+  };
+
+  const fieldLabelStyle: React.CSSProperties = {
+    fontSize: "10px",
+    fontWeight: 600,
+    color: "#9ca3af",
+    display: "block",
+    marginBottom: "4px",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "6px 8px",
+    fontSize: "12px",
+    border: "1px solid #e5e7eb",
+    borderRadius: "6px",
+    outline: "none",
+    backgroundColor: "#fff",
+    color: "#1f2937",
+    boxSizing: "border-box",
+    lineHeight: "1.4",
+  };
+
+  return (
+    <div style={{ marginBottom: "10px" }}>
+      <label style={labelStyle}>{label}</label>
+      {items.map((item, index) => (
+        <div
+          key={item.id || `testimonial-${index}`}
+          style={{
+            border: "1px solid #e5e7eb",
+            borderRadius: "8px",
+            padding: "8px",
+            marginBottom: "8px",
+            backgroundColor: "#fafafa",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+            <span style={{ fontSize: "11px", fontWeight: 600, color: "#4b5563" }}>
+              Quote {index + 1}
+            </span>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <button type="button" disabled={index === 0} onClick={() => moveItem(index, index - 1)} style={{ border: "none", background: "transparent", cursor: index === 0 ? "not-allowed" : "pointer", color: index === 0 ? "#d1d5db" : "#4b5563" }} title="Move up">↑</button>
+              <button type="button" disabled={index === items.length - 1} onClick={() => moveItem(index, index + 1)} style={{ border: "none", background: "transparent", cursor: index === items.length - 1 ? "not-allowed" : "pointer", color: index === items.length - 1 ? "#d1d5db" : "#4b5563" }} title="Move down">↓</button>
+              <button
+                type="button"
+                disabled={items.length <= 1}
+                onClick={() => {
+                  const nextItems = items.filter((_, itemIndex) => itemIndex !== index);
+                  updateItems(nextItems.length > 0 ? nextItems : [createDefaultTestimonialItem(0)]);
+                }}
+                style={{
+                  border: "none",
+                  borderRadius: "4px",
+                  background: "transparent",
+                  color: items.length <= 1 ? "#d1d5db" : "#ef4444",
+                  cursor: items.length <= 1 ? "not-allowed" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "2px",
+                }}
+                title="Remove testimonial"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+
+          {item.quote_img_url && (
+            <img
+              src={item.quote_img_url}
+              alt={item.author || `Quote ${index + 1}`}
+              style={{
+                width: "100%",
+                height: "92px",
+                objectFit: "cover",
+                borderRadius: "6px",
+                border: "1px solid #e5e7eb",
+                marginBottom: "8px",
+              }}
+            />
+          )}
+
+          <div style={{ marginBottom: "8px" }}>
+            <label style={fieldLabelStyle}>Image URL</label>
+            <input
+              type="text"
+              value={item.quote_img_url}
+              onChange={(e) => updateItem(index, { quote_img_url: e.target.value })}
+              placeholder="https://..."
+              style={inputStyle}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => fileRefs.current[index]?.click()}
+            style={{
+              width: "100%",
+              padding: "7px 10px",
+              fontSize: "12px",
+              fontWeight: 500,
+              border: "1px dashed #d1d5db",
+              borderRadius: "6px",
+              backgroundColor: "#fff",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "6px",
+              color: "#4b5563",
+              marginBottom: "8px",
+            }}
+          >
+            <Upload size={13} />
+            Upload Image
+          </button>
+          <input
+            ref={(el) => { fileRefs.current[index] = el; }}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const localUrl = URL.createObjectURL(file);
+              updateItem(index, { quote_img_url: localUrl });
+              const serverUrl = await uploadFileToApi(file, "block");
+              if (serverUrl) {
+                updateItem(index, { quote_img_url: serverUrl });
+                URL.revokeObjectURL(localUrl);
+              }
+              e.currentTarget.value = "";
+            }}
+          />
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+            <div>
+              <label style={fieldLabelStyle}>Author</label>
+              <input
+                type="text"
+                value={item.author}
+                onChange={(e) => updateItem(index, { author: e.target.value })}
+                placeholder="Author"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={fieldLabelStyle}>Job Title</label>
+              <input
+                type="text"
+                value={item.job_title}
+                onChange={(e) => updateItem(index, { job_title: e.target.value })}
+                placeholder="Job title"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "8px" }}>
+            <label style={fieldLabelStyle}>Rating</label>
+            <input
+              type="range"
+              min={0}
+              max={5}
+              step={0.5}
+              value={item.rating}
+              onChange={(e) => updateItem(index, { rating: Number(e.target.value) })}
+              style={{ width: "100%" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px", color: "#6b7280" }}>
+              <span>{item.rating}</span>
+              <span style={{ color: "#f59e0b" }}>{"★".repeat(Math.floor(item.rating))}{item.rating % 1 ? "½" : ""}</span>
+            </div>
+          </div>
+
+          <div>
+            <label style={fieldLabelStyle}>Quote Text</label>
+            <textarea
+              value={item.quote_text}
+              onChange={(e) => updateItem(index, { quote_text: e.target.value })}
+              rows={4}
+              placeholder="Quote text"
+              style={{ ...inputStyle, resize: "vertical", minHeight: "86px" }}
+            />
+          </div>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => updateItems([...items, createDefaultTestimonialItem(items.length)])}
+        style={{
+          width: "100%",
+          padding: "7px 10px",
+          fontSize: "12px",
+          fontWeight: 600,
+          border: "1px dashed #d1d5db",
+          borderRadius: "6px",
+          backgroundColor: "#fff",
+          color: "#4b5563",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "6px",
+        }}
+      >
+        <Plus size={14} />
+        Add Testimonial
+      </button>
+    </div>
+  );
+}
+
+function QuotesEditorControl({
+  value,
+  selectedProps,
+  onChange,
+  label,
+}: {
+  value: unknown;
+  selectedProps: Record<string, any>;
+  onChange: (nextValue: string) => void;
+  label: string;
+}) {
+  const parsedItems = sanitizeQuotesValue(value, selectedProps);
+  const items = parsedItems.length > 0 ? parsedItems : [createDefaultQuoteItem(0)];
+
+  const updateItems = useCallback((nextItems: QuoteEditorItem[]) => {
+    onChange(JSON.stringify(nextItems.map((item, index) => ({
+      ...item,
+      order: index + 1,
+    }))));
+  }, [onChange]);
+
+  const updateItem = (index: number, patch: Partial<QuoteEditorItem>) => {
+    const nextItems = [...items];
+    nextItems[index] = { ...nextItems[index], ...patch };
+    updateItems(nextItems);
+  };
+
+  const moveItem = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= items.length) return;
+    const nextItems = [...items];
+    const [movedItem] = nextItems.splice(fromIndex, 1);
+    nextItems.splice(toIndex, 0, movedItem);
+    updateItems(nextItems);
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: "11px",
+    fontWeight: 600,
+    color: "#6b7280",
+    display: "block",
+    marginBottom: "8px",
+  };
+
+  const fieldLabelStyle: React.CSSProperties = {
+    fontSize: "10px",
+    fontWeight: 600,
+    color: "#9ca3af",
+    display: "block",
+    marginBottom: "4px",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "6px 8px",
+    fontSize: "12px",
+    border: "1px solid #e5e7eb",
+    borderRadius: "6px",
+    outline: "none",
+    backgroundColor: "#fff",
+    color: "#1f2937",
+    boxSizing: "border-box",
+    lineHeight: "1.4",
+  };
+
+  return (
+    <div style={{ marginBottom: "10px" }}>
+      <label style={labelStyle}>{label}</label>
+      {items.map((item, index) => (
+        <div
+          key={item.id || `quote-${index}`}
+          style={{
+            border: "1px solid #e5e7eb",
+            borderRadius: "8px",
+            padding: "8px",
+            marginBottom: "8px",
+            backgroundColor: "#fafafa",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+            <span style={{ fontSize: "11px", fontWeight: 600, color: "#4b5563" }}>
+              Quote {index + 1}
+            </span>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <button type="button" disabled={index === 0} onClick={() => moveItem(index, index - 1)} style={{ border: "none", background: "transparent", cursor: index === 0 ? "not-allowed" : "pointer", color: index === 0 ? "#d1d5db" : "#4b5563" }} title="Move up">↑</button>
+              <button type="button" disabled={index === items.length - 1} onClick={() => moveItem(index, index + 1)} style={{ border: "none", background: "transparent", cursor: index === items.length - 1 ? "not-allowed" : "pointer", color: index === items.length - 1 ? "#d1d5db" : "#4b5563" }} title="Move down">↓</button>
+              <button
+                type="button"
+                disabled={items.length <= 1}
+                onClick={() => {
+                  const nextItems = items.filter((_, itemIndex) => itemIndex !== index);
+                  updateItems(nextItems.length > 0 ? nextItems : [createDefaultQuoteItem(0)]);
+                }}
+                style={{ border: "none", borderRadius: "4px", background: "transparent", color: items.length <= 1 ? "#d1d5db" : "#ef4444", cursor: items.length <= 1 ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "2px" }}
+                title="Remove quote"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "8px" }}>
+            <label style={fieldLabelStyle}>Author*</label>
+            <input
+              type="text"
+              value={item.author}
+              onChange={(e) => updateItem(index, { author: e.target.value })}
+              placeholder="Author"
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={fieldLabelStyle}>Quote Text</label>
+            <textarea
+              value={item.quote_text}
+              onChange={(e) => updateItem(index, { quote_text: e.target.value })}
+              rows={3}
+              placeholder="Quote text"
+              style={{ ...inputStyle, resize: "vertical", minHeight: "72px" }}
+            />
+          </div>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => updateItems([...items, createDefaultQuoteItem(items.length)])}
+        style={{
+          width: "100%",
+          padding: "7px 10px",
+          fontSize: "12px",
+          fontWeight: 600,
+          border: "1px dashed #d1d5db",
+          borderRadius: "6px",
+          backgroundColor: "#fff",
+          color: "#4b5563",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "6px",
+        }}
+      >
+        <Plus size={14} />
+        Add More Quote
+      </button>
+    </div>
+  );
+}
+
 function TimelineItemsEditorControl({
   value,
   onChange,
@@ -3727,10 +4636,63 @@ function TimelineItemsEditorControl({
 }) {
   const parsedItems = sanitizeTimelineItemsValue(value);
   const items = parsedItems.length > 0 ? parsedItems : [createDefaultTimelineItem(0)];
+  const mediaFileRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const thumbnailFileRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const updateItems = useCallback((nextItems: TimelineEditorItem[]) => {
-    onChange(JSON.stringify(nextItems));
+    onChange(JSON.stringify(nextItems.map((item, index) => ({
+      ...item,
+      date: item.tagline_title || item.date,
+      title: item.more.title || item.title,
+      description: item.more.description || item.description,
+      order: index + 1,
+    }))));
   }, [onChange]);
+
+  const updateItem = (index: number, patch: Partial<TimelineEditorItem>) => {
+    const nextItems = [...items];
+    nextItems[index] = { ...nextItems[index], ...patch };
+    updateItems(nextItems);
+  };
+
+  const updateMore = (index: number, field: keyof TimelineEditorItem["more"], fieldValue: string) => {
+    const item = items[index];
+    updateItem(index, {
+      more: { ...item.more, [field]: fieldValue },
+      ...(field === "title" ? { title: fieldValue } : {}),
+      ...(field === "description" ? { description: fieldValue } : {}),
+    });
+  };
+
+  const moveItem = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= items.length) return;
+    const nextItems = [...items];
+    const [movedItem] = nextItems.splice(fromIndex, 1);
+    nextItems.splice(toIndex, 0, movedItem);
+    updateItems(nextItems);
+  };
+
+  const uploadTimelineFile = async (
+    file: File,
+    index: number,
+    field: "imageUrl" | "videoUrl" | "videoThumbnail",
+    uploadType: string
+  ) => {
+    const localUrl = URL.createObjectURL(file);
+    updateItem(index, {
+      [field]: localUrl,
+      mediaType: field === "imageUrl" ? "image" : "video",
+    } as Partial<TimelineEditorItem>);
+
+    const serverUrl = await uploadFileToApi(file, uploadType);
+    if (serverUrl) {
+      updateItem(index, {
+        [field]: serverUrl,
+        mediaType: field === "imageUrl" ? "image" : "video",
+      } as Partial<TimelineEditorItem>);
+      URL.revokeObjectURL(localUrl);
+    }
+  };
 
   const labelStyle: React.CSSProperties = {
     fontSize: "11px",
@@ -3782,68 +4744,67 @@ function TimelineItemsEditorControl({
             <span style={{ fontSize: "11px", fontWeight: 600, color: "#4b5563" }}>
               Item {index + 1}
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                const nextItems = items.filter((_, i) => i !== index);
-                updateItems(nextItems.length > 0 ? nextItems : [createDefaultTimelineItem(0)]);
-              }}
-              style={{
-                border: "none",
-                borderRadius: "4px",
-                background: "transparent",
-                color: "#ef4444",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "2px",
-              }}
-              title="Remove timeline item"
-            >
-              <Trash2 size={14} />
-            </button>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <button type="button" disabled={index === 0} onClick={() => moveItem(index, index - 1)} style={{ border: "none", background: "transparent", cursor: index === 0 ? "not-allowed" : "pointer", color: index === 0 ? "#d1d5db" : "#4b5563" }} title="Move up">↑</button>
+              <button type="button" disabled={index === items.length - 1} onClick={() => moveItem(index, index + 1)} style={{ border: "none", background: "transparent", cursor: index === items.length - 1 ? "not-allowed" : "pointer", color: index === items.length - 1 ? "#d1d5db" : "#4b5563" }} title="Move down">↓</button>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextItems = items.filter((_, i) => i !== index);
+                  updateItems(nextItems.length > 0 ? nextItems : [createDefaultTimelineItem(0)]);
+                }}
+                style={{ border: "none", borderRadius: "4px", background: "transparent", color: "#ef4444", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "2px" }}
+                title="Remove timeline item"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+            <div>
+              <label style={fieldLabelStyle}>Media Alignment</label>
+              <select value={item.mediaAlignment} onChange={(e) => updateItem(index, { mediaAlignment: e.target.value as "left" | "right" })} style={inputStyle}>
+                <option value="left">Left</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+            <div>
+              <label style={fieldLabelStyle}>Enable Form</label>
+              <select value={item.is_form ? "yes" : "no"} onChange={(e) => updateItem(index, { is_form: e.target.value === "yes" })} style={inputStyle}>
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "8px" }}>
+            <label style={fieldLabelStyle}>Timeline Year Title</label>
+            <input
+              type="text"
+              value={item.tagline_title}
+              onChange={(e) => updateItem(index, { tagline_title: e.target.value, date: e.target.value })}
+              placeholder="2026 or Jan 2026"
+              style={inputStyle}
+            />
           </div>
 
           <div style={{ marginBottom: "8px" }}>
             <label style={fieldLabelStyle}>Title</label>
             <input
               type="text"
-              value={item.title}
-              onChange={(e) => {
-                const nextItems = [...items];
-                nextItems[index] = { ...nextItems[index], title: e.target.value };
-                updateItems(nextItems);
-              }}
+              value={item.more.title || item.title}
+              onChange={(e) => updateMore(index, "title", e.target.value)}
               placeholder="Event title"
               style={inputStyle}
             />
           </div>
 
           <div style={{ marginBottom: "8px" }}>
-            <label style={fieldLabelStyle}>Date</label>
-            <input
-              type="text"
-              value={item.date}
-              onChange={(e) => {
-                const nextItems = [...items];
-                nextItems[index] = { ...nextItems[index], date: e.target.value };
-                updateItems(nextItems);
-              }}
-              placeholder="2026 or Jan 2026"
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
             <label style={fieldLabelStyle}>Description</label>
             <textarea
-              value={item.description}
-              onChange={(e) => {
-                const nextItems = [...items];
-                nextItems[index] = { ...nextItems[index], description: e.target.value };
-                updateItems(nextItems);
-              }}
+              value={item.more.description || item.description}
+              onChange={(e) => updateMore(index, "description", e.target.value)}
               placeholder="Describe this milestone"
               rows={3}
               style={{
@@ -3853,6 +4814,102 @@ function TimelineItemsEditorControl({
               }}
             />
           </div>
+
+          <div style={{ marginBottom: "8px" }}>
+            <label style={fieldLabelStyle}>Link</label>
+            <input
+              type="text"
+              value={item.more.link || ""}
+              onChange={(e) => updateMore(index, "link", e.target.value)}
+              placeholder="https://..."
+              style={inputStyle}
+            />
+          </div>
+
+          {!item.is_form && (
+            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "8px" }}>
+              <label style={fieldLabelStyle}>Media</label>
+              <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+                {(["image", "video"] as const).map((mediaType) => (
+                  <button
+                    key={mediaType}
+                    type="button"
+                    onClick={() => updateItem(index, { mediaType, ...(mediaType === "image" ? { videoUrl: "", videoThumbnail: "" } : {}) })}
+                    style={{
+                      flex: 1,
+                      padding: "7px 10px",
+                      border: `1px solid ${item.mediaType === mediaType ? "#f59e0b" : "#e5e7eb"}`,
+                      borderRadius: "6px",
+                      background: item.mediaType === mediaType ? "#fffbeb" : "#fff",
+                      color: "#4b5563",
+                      cursor: "pointer",
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {mediaType}
+                  </button>
+                ))}
+                {item.mediaType && (
+                  <button type="button" onClick={() => updateItem(index, { mediaType: null, imageUrl: "", videoUrl: "", videoThumbnail: "" })} style={{ padding: "7px 10px", border: "1px solid #fee2e2", borderRadius: "6px", background: "#fff", color: "#ef4444", cursor: "pointer" }}>
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {item.mediaType === "image" && (
+                <>
+                  {item.imageUrl && <img src={item.imageUrl} alt="" style={{ width: "100%", height: "92px", objectFit: "cover", borderRadius: "6px", border: "1px solid #e5e7eb", marginBottom: "6px" }} />}
+                  <input value={item.imageUrl} onChange={(e) => updateItem(index, { imageUrl: e.target.value })} placeholder="Image URL" style={{ ...inputStyle, marginBottom: "6px" }} />
+                  <button type="button" onClick={() => mediaFileRefs.current[index]?.click()} style={{ width: "100%", padding: "7px 10px", border: "1px dashed #d1d5db", borderRadius: "6px", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                    <Upload size={13} /> Upload Image
+                  </button>
+                  <input ref={(el) => { mediaFileRefs.current[index] = el; }} type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    await uploadTimelineFile(file, index, "imageUrl", "block");
+                    e.currentTarget.value = "";
+                  }} />
+                </>
+              )}
+
+              {item.mediaType === "video" && (
+                <>
+                  <div style={{ marginBottom: "6px" }}>
+                    <label style={fieldLabelStyle}>Video Source</label>
+                    <select value={item.videoSource} onChange={(e) => updateItem(index, { videoSource: e.target.value as "native" | "youtube" })} style={inputStyle}>
+                      <option value="native">Native</option>
+                      <option value="youtube">YouTube</option>
+                    </select>
+                  </div>
+                  <input value={item.videoUrl} onChange={(e) => updateItem(index, { videoUrl: e.target.value })} placeholder="Video URL" style={{ ...inputStyle, marginBottom: "6px" }} />
+                  {item.videoSource === "native" && (
+                    <>
+                      <button type="button" onClick={() => mediaFileRefs.current[index]?.click()} style={{ width: "100%", padding: "7px 10px", border: "1px dashed #d1d5db", borderRadius: "6px", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", marginBottom: "6px" }}>
+                        <Upload size={13} /> Upload Video
+                      </button>
+                      <input ref={(el) => { mediaFileRefs.current[index] = el; }} type="file" accept="video/*" style={{ display: "none" }} onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        await uploadTimelineFile(file, index, "videoUrl", "block");
+                        e.currentTarget.value = "";
+                      }} />
+                    </>
+                  )}
+                  {item.videoThumbnail && <img src={item.videoThumbnail} alt="" style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "6px", border: "1px solid #e5e7eb", marginBottom: "6px" }} />}
+                  <input value={item.videoThumbnail} onChange={(e) => updateItem(index, { videoThumbnail: e.target.value })} placeholder="Video thumbnail URL" style={{ ...inputStyle, marginBottom: "6px" }} />
+                  <button type="button" onClick={() => thumbnailFileRefs.current[index]?.click()} style={{ width: "100%", padding: "7px 10px", border: "1px dashed #d1d5db", borderRadius: "6px", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                    <Upload size={13} /> Upload Thumbnail
+                  </button>
+                  <input ref={(el) => { thumbnailFileRefs.current[index] = el; }} type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    await uploadTimelineFile(file, index, "videoThumbnail", "block");
+                    e.currentTarget.value = "";
+                  }} />
+                </>
+              )}
+            </div>
+          )}
         </div>
       ))}
 
@@ -3897,16 +4954,38 @@ function DocumentsItemsEditorControl({
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
   const updateItems = useCallback((nextItems: DocumentEditorItem[]) => {
-    const normalized = nextItems.map((item) => ({
+    const normalized = nextItems.map((item, index) => ({
+      id: item.id,
+      groupTitle: item.groupTitle,
+      description: item.description,
+      sortOrder: item.sortOrder || 1,
       title: item.title,
       type: item.type,
       fileType: item.type,
       url: item.url,
+      document_url: item.url,
       size: item.size,
       fileSize: item.size,
+      image: item.image || "",
+      doc_img: item.image || "",
+      order: index + 1,
     }));
     onChange(JSON.stringify(normalized));
   }, [onChange]);
+
+  const updateDocumentItem = (index: number, patch: Partial<DocumentEditorItem>) => {
+    const nextItems = [...items];
+    nextItems[index] = { ...nextItems[index], ...patch };
+    updateItems(nextItems);
+  };
+
+  const moveDocumentItem = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= items.length) return;
+    const nextItems = [...items];
+    const [movedItem] = nextItems.splice(fromIndex, 1);
+    nextItems.splice(toIndex, 0, movedItem);
+    updateItems(nextItems);
+  };
 
   const getFileExtension = (fileName: string): string => {
     const parts = fileName.split(".");
@@ -4010,39 +5089,51 @@ function DocumentsItemsEditorControl({
             <span style={{ fontSize: "11px", fontWeight: 600, color: "#4b5563" }}>
               Document {index + 1}
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                const nextItems = items.filter((_, i) => i !== index);
-                updateItems(nextItems.length > 0 ? nextItems : [createDefaultDocumentItem(0)]);
-              }}
-              style={{
-                border: "none",
-                borderRadius: "4px",
-                background: "transparent",
-                color: "#ef4444",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "2px",
-              }}
-              title="Remove document"
-            >
-              <Trash2 size={14} />
-            </button>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <button type="button" disabled={index === 0} onClick={() => moveDocumentItem(index, index - 1)} style={{ border: "none", background: "transparent", cursor: index === 0 ? "not-allowed" : "pointer", color: index === 0 ? "#d1d5db" : "#4b5563" }} title="Move up">↑</button>
+              <button type="button" disabled={index === items.length - 1} onClick={() => moveDocumentItem(index, index + 1)} style={{ border: "none", background: "transparent", cursor: index === items.length - 1 ? "not-allowed" : "pointer", color: index === items.length - 1 ? "#d1d5db" : "#4b5563" }} title="Move down">↓</button>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextItems = items.filter((_, i) => i !== index);
+                  updateItems(nextItems.length > 0 ? nextItems : [createDefaultDocumentItem(0)]);
+                }}
+                style={{ border: "none", borderRadius: "4px", background: "transparent", color: "#ef4444", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "2px" }}
+                title="Remove document"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           </div>
 
           <div style={{ marginBottom: "8px" }}>
-            <label style={fieldLabelStyle}>Title</label>
+            <label style={fieldLabelStyle}>Group Title</label>
+            <input
+              type="text"
+              value={item.groupTitle}
+              onChange={(e) => updateDocumentItem(index, { groupTitle: e.target.value })}
+              placeholder="Documents"
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ marginBottom: "8px" }}>
+            <label style={fieldLabelStyle}>Description</label>
+            <textarea
+              value={item.description}
+              onChange={(e) => updateDocumentItem(index, { description: e.target.value })}
+              rows={2}
+              placeholder="Group description"
+              style={{ ...inputStyle, resize: "vertical", minHeight: "56px" }}
+            />
+          </div>
+
+          <div style={{ marginBottom: "8px" }}>
+            <label style={fieldLabelStyle}>Document Title</label>
             <input
               type="text"
               value={item.title}
-              onChange={(e) => {
-                const nextItems = [...items];
-                nextItems[index] = { ...nextItems[index], title: e.target.value };
-                updateItems(nextItems);
-              }}
+              onChange={(e) => updateDocumentItem(index, { title: e.target.value })}
               placeholder="Document title"
               style={inputStyle}
             />
@@ -4053,11 +5144,7 @@ function DocumentsItemsEditorControl({
             <input
               type="text"
               value={item.url}
-              onChange={(e) => {
-                const nextItems = [...items];
-                nextItems[index] = { ...nextItems[index], url: e.target.value };
-                updateItems(nextItems);
-              }}
+              onChange={(e) => updateDocumentItem(index, { url: e.target.value })}
               placeholder="https://..."
               style={inputStyle}
             />
@@ -4106,11 +5193,7 @@ function DocumentsItemsEditorControl({
             <input
               type="text"
               value={item.type}
-              onChange={(e) => {
-                const nextItems = [...items];
-                nextItems[index] = { ...nextItems[index], type: e.target.value };
-                updateItems(nextItems);
-              }}
+              onChange={(e) => updateDocumentItem(index, { type: e.target.value })}
               placeholder="pdf, docx, xlsx"
               style={inputStyle}
             />
@@ -4379,6 +5462,67 @@ function ContactInfoEditorControl({
   onChange: (key: string, value: any) => void;
   label: string;
 }) {
+  const contacts = sanitizeContactsValue(values.contacts);
+  const normalizedContacts = contacts.length > 0 ? contacts : [createDefaultContactItem(0)];
+
+  const updateContacts = useCallback((nextContacts: ContactEditorItem[]) => {
+    onChange("contacts", JSON.stringify(nextContacts.map((contact, index) => ({
+      ...contact,
+      order: index + 1,
+    }))));
+  }, [onChange]);
+
+  const moveContact = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= normalizedContacts.length) return;
+    const nextContacts = [...normalizedContacts];
+    const [movedContact] = nextContacts.splice(fromIndex, 1);
+    nextContacts.splice(toIndex, 0, movedContact);
+    updateContacts(nextContacts);
+  };
+
+  const updateContactField = (index: number, field: keyof ContactEditorItem, fieldValue: string) => {
+    const nextContacts = normalizedContacts.map((contact, contactIndex) => (
+      contactIndex === index ? { ...contact, [field]: fieldValue } : contact
+    ));
+    updateContacts(nextContacts);
+  };
+
+  const updateNestedContactValue = (
+    contactIndex: number,
+    field: "phone" | "email",
+    valueIndex: number,
+    fieldValue: string
+  ) => {
+    const nextContacts = normalizedContacts.map((contact, index) => {
+      if (index !== contactIndex) return contact;
+      return {
+        ...contact,
+        [field]: contact[field].map((item, nestedIndex) => (
+          nestedIndex === valueIndex ? { value: fieldValue } : item
+        )),
+      };
+    });
+    updateContacts(nextContacts);
+  };
+
+  const addNestedContactValue = (contactIndex: number, field: "phone" | "email") => {
+    const nextContacts = normalizedContacts.map((contact, index) => (
+      index === contactIndex
+        ? { ...contact, [field]: [...contact[field], { value: "" }] }
+        : contact
+    ));
+    updateContacts(nextContacts);
+  };
+
+  const removeNestedContactValue = (contactIndex: number, field: "phone" | "email", valueIndex: number) => {
+    const nextContacts = normalizedContacts.map((contact, index) => {
+      if (index !== contactIndex) return contact;
+      const nextValues = contact[field].filter((_, nestedIndex) => nestedIndex !== valueIndex);
+      return { ...contact, [field]: nextValues.length > 0 ? nextValues : [{ value: "" }] };
+    });
+    updateContacts(nextContacts);
+  };
+
   const labelStyle: React.CSSProperties = {
     fontSize: "11px",
     fontWeight: 600,
@@ -4437,25 +5581,176 @@ function ContactInfoEditorControl({
       </div>
 
       <div style={{ marginBottom: "8px" }}>
-        <label style={fieldLabelStyle}>Phone</label>
-        <input
-          type="text"
-          value={values.phone ?? ""}
-          onChange={(e) => onChange("phone", e.target.value)}
-          placeholder="+1 (555) 123-4567"
-          style={inputStyle}
-        />
-      </div>
+        <label style={fieldLabelStyle}>Contacts</label>
+        {normalizedContacts.map((contact, contactIndex) => (
+          <div
+            key={contact.id || contactIndex}
+            style={{
+              border: "1px solid #e5e7eb",
+              borderRadius: "8px",
+              padding: "8px",
+              marginBottom: "8px",
+              backgroundColor: "#fafafa",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "#4b5563" }}>
+                Contact {contactIndex + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextContacts = normalizedContacts.filter((_, index) => index !== contactIndex);
+                  updateContacts(nextContacts.length > 0 ? nextContacts : [createDefaultContactItem(0)]);
+                }}
+                disabled={normalizedContacts.length <= 1}
+                style={{
+                  border: "none",
+                  borderRadius: "4px",
+                  background: "transparent",
+                  color: normalizedContacts.length <= 1 ? "#d1d5db" : "#ef4444",
+                  cursor: normalizedContacts.length <= 1 ? "not-allowed" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "2px",
+                }}
+                title="Remove contact"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
 
-      <div style={{ marginBottom: "8px" }}>
-        <label style={fieldLabelStyle}>Email</label>
-        <input
-          type="text"
-          value={values.email ?? ""}
-          onChange={(e) => onChange("email", e.target.value)}
-          placeholder="hello@example.com"
-          style={inputStyle}
-        />
+            <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+              <button
+                type="button"
+                disabled={contactIndex === 0}
+                onClick={() => moveContact(contactIndex, contactIndex - 1)}
+                style={{
+                  flex: 1,
+                  padding: "5px 8px",
+                  fontSize: "11px",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "6px",
+                  backgroundColor: "#fff",
+                  color: contactIndex === 0 ? "#d1d5db" : "#4b5563",
+                  cursor: contactIndex === 0 ? "not-allowed" : "pointer",
+                }}
+              >
+                Move Up
+              </button>
+              <button
+                type="button"
+                disabled={contactIndex === normalizedContacts.length - 1}
+                onClick={() => moveContact(contactIndex, contactIndex + 1)}
+                style={{
+                  flex: 1,
+                  padding: "5px 8px",
+                  fontSize: "11px",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "6px",
+                  backgroundColor: "#fff",
+                  color: contactIndex === normalizedContacts.length - 1 ? "#d1d5db" : "#4b5563",
+                  cursor: contactIndex === normalizedContacts.length - 1 ? "not-allowed" : "pointer",
+                }}
+              >
+                Move Down
+              </button>
+            </div>
+
+            <input
+              type="text"
+              value={contact.title}
+              onChange={(e) => updateContactField(contactIndex, "title", e.target.value)}
+              placeholder="Contact title"
+              style={{ ...inputStyle, marginBottom: "8px" }}
+            />
+            <textarea
+              value={contact.description}
+              onChange={(e) => updateContactField(contactIndex, "description", e.target.value)}
+              rows={2}
+              placeholder="Contact description"
+              style={{ ...inputStyle, resize: "vertical", minHeight: "56px", marginBottom: "8px" }}
+            />
+
+            {(["phone", "email"] as const).map((field) => (
+              <div key={field} style={{ marginBottom: "8px" }}>
+                <label style={fieldLabelStyle}>{field === "phone" ? "Phone No." : "Email"}</label>
+                {contact[field].map((item, nestedIndex) => (
+                  <div key={`${field}-${nestedIndex}`} style={{ display: "flex", gap: "6px", marginBottom: "6px" }}>
+                    <input
+                      type="text"
+                      value={item.value}
+                      onChange={(e) => updateNestedContactValue(contactIndex, field, nestedIndex, e.target.value)}
+                      placeholder={field === "phone" ? "Phone number here..." : "Email here..."}
+                      style={inputStyle}
+                    />
+                    <button
+                      type="button"
+                      disabled={contact[field].length <= 1}
+                      onClick={() => removeNestedContactValue(contactIndex, field, nestedIndex)}
+                      style={{
+                        border: "1px solid #fee2e2",
+                        color: contact[field].length <= 1 ? "#d1d5db" : "#ef4444",
+                        background: "#fff",
+                        borderRadius: "6px",
+                        padding: "6px",
+                        cursor: contact[field].length <= 1 ? "not-allowed" : "pointer",
+                        flexShrink: 0,
+                      }}
+                      title={`Remove ${field}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addNestedContactValue(contactIndex, field)}
+                  style={{
+                    width: "100%",
+                    border: "1px dashed #d1d5db",
+                    borderRadius: "6px",
+                    padding: "6px 8px",
+                    fontSize: "12px",
+                    background: "#fff",
+                    color: "#4b5563",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <Plus size={12} />
+                  Add {field === "phone" ? "Phone No." : "Email"}
+                </button>
+              </div>
+            ))}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => updateContacts([...normalizedContacts, createDefaultContactItem(normalizedContacts.length)])}
+          style={{
+            width: "100%",
+            border: "1px dashed #d1d5db",
+            borderRadius: "6px",
+            padding: "7px 10px",
+            fontSize: "12px",
+            fontWeight: 600,
+            background: "#fff",
+            color: "#4b5563",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "6px",
+          }}
+        >
+          <Plus size={14} />
+          Add More
+        </button>
       </div>
 
       <div style={{ marginBottom: "8px" }}>
@@ -4973,6 +6268,8 @@ function SettingsGroup({
   const isSocialWallContentGroup = componentName === "Social Wall" && groupName === "Content";
   const isGalleryContentGroup = componentName === "Gallery" && groupName === "Content";
   const isTCardContentGroup = componentName === "T-Card" && groupName === "Content";
+  const isTestimonialContentGroup = componentName === "Testimonial" && groupName === "Content";
+  const isQuoteContentGroup = componentName === "Quote" && groupName === "Content";
   const isTeamContentGroup = (componentName === "Team" || componentName === "Team Members") && groupName === "Content";
   const isTimelineContentGroup = componentName === "Timeline" && groupName === "Content";
   const isDocumentsContentGroup = componentName === "Documents" && groupName === "Content";
@@ -5064,6 +6361,24 @@ function SettingsGroup({
             />
           )}
 
+          {isTestimonialContentGroup && (
+            <TestimonialsEditorControl
+              value={selectedProps?.quotes}
+              selectedProps={selectedProps}
+              onChange={(value) => onChange("quotes", value)}
+              label="Testimonials"
+            />
+          )}
+
+          {isQuoteContentGroup && (
+            <QuotesEditorControl
+              value={selectedProps?.quotes}
+              selectedProps={selectedProps}
+              onChange={(value) => onChange("quotes", value)}
+              label="Quotes"
+            />
+          )}
+
           {isTeamContentGroup && (
             <TeamMembersEditorControl
               value={selectedProps?.members}
@@ -5140,6 +6455,23 @@ function SettingsGroup({
             if (isTCardContentGroup && config.key === "items") {
               return null;
             }
+            if (isTestimonialContentGroup && [
+              "quotes",
+              "quote",
+              "authorName",
+              "authorTitle",
+              "authorImage",
+              "rating",
+            ].includes(config.key)) {
+              return null;
+            }
+            if (isQuoteContentGroup && [
+              "quotes",
+              "quote",
+              "author",
+            ].includes(config.key)) {
+              return null;
+            }
             if (isTeamContentGroup && config.key === "members") {
               return null;
             }
@@ -5155,6 +6487,7 @@ function SettingsGroup({
             if (isContactContentGroup && [
               "title",
               "description",
+              "contacts",
               "phone",
               "email",
               "address",
@@ -5169,6 +6502,8 @@ function SettingsGroup({
                 config={config}
                 value={selectedProps?.[config.key]}
                 onChange={onChange}
+                componentName={componentName}
+                selectedProps={selectedProps}
               />
             );
           })}
@@ -5231,6 +6566,41 @@ export function SettingsPanel() {
 
           props[key] = value;
 
+          if (selected.name === "Video") {
+            if (key === "videoType") {
+              props.src = "";
+              props.videoId = "";
+              props.thumbnail = "";
+              props.video_type = value;
+              props.video_url = "";
+              props.video_id = "";
+              props.thumbnail_url = "";
+            }
+
+            if (key === "src") {
+              props.video_url = value;
+              if (props.videoType === "youtube" || props.video_type === "youtube") {
+                const nextVideoId = extractYouTubeId(String(value || ""));
+                props.videoId = nextVideoId;
+                props.video_id = nextVideoId;
+                props.thumbnail = nextVideoId ? `https://i.ytimg.com/vi/${nextVideoId}/maxresdefault.jpg` : "";
+                props.thumbnail_url = props.thumbnail;
+              }
+            }
+
+            if (key === "videoId") {
+              props.video_id = value;
+              if (value && !props.thumbnail) {
+                props.thumbnail = `https://i.ytimg.com/vi/${value}/maxresdefault.jpg`;
+                props.thumbnail_url = props.thumbnail;
+              }
+            }
+
+            if (key === "thumbnail") {
+              props.thumbnail_url = value;
+            }
+          }
+
           // When module type changes, reset category to empty to show all items from new module
           if (key === "moduleType") {
             props.categoryName = "";
@@ -5280,7 +6650,8 @@ export function SettingsPanel() {
 
   const { mode: blockMode, setMode: setBlockMode } = useBlockMode();
 
-  const allSettings = componentSettings[selected.name] || [];
+  const settingsKey = getComponentSettingsKey(selected.name);
+  const allSettings = componentSettings[settingsKey] || [];
 
   // Check which tabs have content
   const hasFormSettings = allSettings.some((s) => getSettingTab(s) === "form");
@@ -5292,7 +6663,6 @@ export function SettingsPanel() {
   const settings = hasBothTabs
     ? allSettings.filter((s) => getSettingTab(s) === activeTab)
     : allSettings;
-
   // Group settings
   const groups: Record<string, PropConfig[]> = {};
   settings.forEach((s) => {

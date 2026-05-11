@@ -17,9 +17,9 @@ export const teamBlockPresetContent = (
   >
     <CraftTeam
       members={JSON.stringify([
-        { name: "John Doe", role: "CEO", avatar: "", bio: "Leading the team forward." },
-        { name: "Jane Smith", role: "CTO", avatar: "", bio: "Building the technology." },
-        { name: "Alex Johnson", role: "Designer", avatar: "", bio: "Crafting the experience." },
+        { name: "John Doe", designation: "CEO", image_url: "", short_bio: "Leading the team forward.", order: 1 },
+        { name: "Jane Smith", designation: "CTO", image_url: "", short_bio: "Building the technology.", order: 2 },
+        { name: "Alex Johnson", designation: "Designer", image_url: "", short_bio: "Crafting the experience.", order: 3 },
       ])}
       columns={3}
       tabletColumns={2}

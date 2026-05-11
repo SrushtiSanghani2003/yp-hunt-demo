@@ -27,9 +27,24 @@ export interface CraftTimelineProps {
 }
 
 interface TimelineItem {
+  id?: string;
   title: string;
   date: string;
   description: string;
+  tagline_title?: string;
+  imageUrl?: string;
+  videoSource?: "native" | "youtube";
+  videoUrl?: string;
+  videoThumbnail?: string;
+  mediaType?: "image" | "video" | null;
+  mediaAlignment?: "left" | "right";
+  is_form?: boolean;
+  more?: {
+    title?: string;
+    description?: string;
+    link?: string;
+  };
+  order?: number;
 }
 
 export const CraftTimeline = ({
@@ -92,13 +107,40 @@ export const CraftTimeline = ({
   }
 
   const normalizeTimelineItems = (raw: any[]): TimelineItem[] =>
-    raw.map((item, index) => ({
-      title: typeof item?.title === "string" && item.title.trim()
-        ? item.title
-        : `Milestone ${index + 1}`,
-      date: typeof item?.date === "string" ? item.date : "",
-      description: typeof item?.description === "string" ? item.description : "",
-    }));
+    raw
+      .map((item, index) => {
+        const more = item?.more && typeof item.more === "object" ? item.more : {};
+        const title = typeof item?.title === "string" && item.title.trim()
+          ? item.title
+          : (typeof more?.title === "string" && more.title.trim() ? more.title : `Milestone ${index + 1}`);
+        const description = typeof item?.description === "string"
+          ? item.description
+          : (typeof more?.description === "string" ? more.description : "");
+
+        return {
+          id: typeof item?.id === "string" ? item.id : undefined,
+          title,
+          date: typeof item?.date === "string"
+            ? item.date
+            : (typeof item?.tagline_title === "string" ? item.tagline_title : ""),
+          description,
+          tagline_title: typeof item?.tagline_title === "string" ? item.tagline_title : "",
+          imageUrl: typeof item?.imageUrl === "string" ? item.imageUrl : "",
+          videoSource: (item?.videoSource === "youtube" ? "youtube" : "native") as "youtube" | "native",
+          videoUrl: typeof item?.videoUrl === "string" ? item.videoUrl : "",
+          videoThumbnail: typeof item?.videoThumbnail === "string" ? item.videoThumbnail : "",
+          mediaType: item?.mediaType === "image" || item?.mediaType === "video" ? item.mediaType : null,
+          mediaAlignment: (item?.mediaAlignment === "right" ? "right" : "left") as "left" | "right",
+          is_form: Boolean(item?.is_form),
+          more: {
+            title: typeof more?.title === "string" ? more.title : title,
+            description: typeof more?.description === "string" ? more.description : description,
+            link: typeof more?.link === "string" ? more.link : "",
+          },
+          order: typeof item?.order === "number" ? item.order : index + 1,
+        };
+      })
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
 
   let timelineItems: TimelineItem[] = [];
   if (Array.isArray(items)) {
@@ -152,15 +194,45 @@ export const CraftTimeline = ({
 
         {timelineItems.map((item, index) => {
           const isAlternatingRight = layout === "alternating" && index % 2 === 1;
+          const itemTitle = item.more?.title || item.title;
+          const itemDescription = item.more?.description || item.description;
+          const itemDate = item.tagline_title || item.date;
+          const media = !item.is_form && item.mediaType ? (
+            <div style={{ width: "180px", maxWidth: "100%", flexShrink: 0 }}>
+              {item.mediaType === "image" && item.imageUrl && (
+                <img
+                  src={item.imageUrl}
+                  alt={itemTitle}
+                  style={{ width: "100%", height: "110px", objectFit: "cover", borderRadius: "8px", display: "block" }}
+                  draggable={false}
+                />
+              )}
+              {item.mediaType === "video" && (
+                item.videoThumbnail ? (
+                  <img
+                    src={item.videoThumbnail}
+                    alt={itemTitle}
+                    style={{ width: "100%", height: "110px", objectFit: "cover", borderRadius: "8px", display: "block" }}
+                    draggable={false}
+                  />
+                ) : (
+                  <div style={{ height: "110px", borderRadius: "8px", backgroundColor: "#111827", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px" }}>
+                    Video
+                  </div>
+                )
+              )}
+            </div>
+          ) : null;
 
           return (
             <div
-              key={index}
+              key={item.id || index}
               style={{
                 display: "flex",
                 alignItems: "flex-start",
                 gap: `${gap}px`,
                 justifyContent: isAlternatingRight ? "flex-end" : "flex-start",
+                flexDirection: item.mediaAlignment === "right" ? "row" : "row-reverse",
               }}
             >
               {/* Dot - always on left for "left" layout, alternates for "alternating" */}
@@ -205,7 +277,7 @@ export const CraftTimeline = ({
                     color: textColor,
                   }}
                 >
-                  {item.title}
+                  {itemTitle}
                 </h3>
                 <p
                   style={{
@@ -214,7 +286,7 @@ export const CraftTimeline = ({
                     color: dateColor,
                   }}
                 >
-                  {item.date}
+                  {itemDate}
                 </p>
                 <p
                   style={{
@@ -223,9 +295,15 @@ export const CraftTimeline = ({
                     color: textColor,
                   }}
                 >
-                  {item.description}
+                  {itemDescription}
                 </p>
+                {item.more?.link && (
+                  <a href={item.more.link} style={{ display: "inline-block", marginTop: "8px", color: accentColor, fontSize: "13px", fontWeight: 600 }}>
+                    View More
+                  </a>
+                )}
               </div>
+              {media}
             </div>
           );
         })}
